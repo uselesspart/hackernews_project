@@ -1,0 +1,194 @@
+[
+  {
+    "by": "UltraSane",
+    "id": 44688707,
+    "parent": 44683062,
+    "text": "&quot;You actually will have to run both IPv4 and IPv6 networks *indefinitely*.&quot;",
+    "time": 1753478973,
+    "type": "comment"
+  },
+  {
+    "by": "rudx",
+    "id": 44502210,
+    "parent": 44502115,
+    "text": "Appreciate you sharing the vision. Having worked in this space for a while, IMO the biggest challenges for a public facing graph are in 1. Entity Linking from NL Query -&gt; Graph queries or in your case relational queries (Multiple similarly named teams in Microsoft). And 2. Relevance of results for more complex queries. I like your approach of having a drop down of filter tags, which eliminates 1, but will be harder to scale like in a Graph of everything.",
+    "time": 1751996095,
+    "type": "comment"
+  },
+  {
+    "by": "abhisek",
+    "id": 44032472,
+    "kids": [
+      44050530
+    ],
+    "parent": 44030492,
+    "text": "The closest I can think of is Devise for Ruby on Rails ecosystem. While these solution provides great developer experience to get started, IMHO there are solid reasons to have separate identity providers like Auth0 or if you like to self-host, stuff like Keycloak, Dex and more. Consider your business logic backend need multi-region deployments, where will you keep the auth DB?<p>Personally, if I want my app to be future proof, I would probably keep auth as a separate service while speaking standard protocols like OAuth2 so that I can maintain single source of truth for my user identity and be able to build multiple applications based on it.",
+    "time": 1747676400,
+    "type": "comment"
+  },
+  {
+    "by": "ValdikSS",
+    "id": 44258511,
+    "parent": 44257645,
+    "text": "Flipper Zero supports that",
+    "time": 1749739977,
+    "type": "comment"
+  },
+  {
+    "by": "croon",
+    "id": 44873378,
+    "kids": [
+      44873415
+    ],
+    "parent": 44872765,
+    "text": "Which of his appointments were determined on merit to combat this &quot;DEI issue&quot;?",
+    "time": 1754983438,
+    "type": "comment"
+  },
+  {
+    "by": "christophilus",
+    "id": 44608978,
+    "parent": 44607740,
+    "text": "Man. I am on Fedora, but I do have a handful of copr packages installed. (Copr is the Fedora analogue of the AUR.)<p>This makes me nervous. I guess it’s time to do some audits.",
+    "time": 1752867795,
+    "type": "comment"
+  },
+  {
+    "by": "atombender",
+    "id": 44949810,
+    "kids": [
+      44950031,
+      44952181
+    ],
+    "parent": 44949598,
+    "text": "Great show. If you liked it, Ruth Goodman and Peter Ginn has made several shows together along with another archeologist, Alex Langlands, which I think are even better.<p>Of these, I think my favourite is Victorian Farm (2009), where the gang has to bring a real Victorian-era farm back into working order and then live like the Victorian farmers did. Unlike the castle show, it benefits from the gang having to research and learn the old ways on their own, whereas the castle is a big project where they&#x27;re being taught or directed by the crew who&#x27;s already working there.<p>The other shows — Tudor Monastery Farm, Edwardian Farm, Wartime Farm, Tales from the Green Valley, etc. — are all thoroughly excellent.<p>A minor point, but Goodman is not an archeologist or historian, but she&#x27;s very good!",
+    "time": 1755595820,
+    "type": "comment"
+  },
+  {
+    "by": "BigglesB",
+    "id": 44804753,
+    "parent": 44802916,
+    "text": "I also wonder the extent to which &quot;pseudo-black-box-AI&quot; is potentially driving some of these crazy valuations now due to it actually being used in a lot algorithmic trading itself... seems like a prevalence of over-corrected models, all expecting &quot;line go up&quot; from recent historical data would be the perfect way to cook up a really &quot;big beautiful bubble&quot; so to speak...",
+    "time": 1754430125,
+    "type": "comment"
+  },
+  {
+    "by": "diamond559",
+    "id": 44331401,
+    "kids": [
+      44331492
+    ],
+    "parent": 44331045,
+    "text": "This will happen eventually as all US business are in the process of being de-facto nationalized puppets of the regime&#x27;s will.",
+    "time": 1750449339,
+    "type": "comment"
+  },
+  {
+    "by": "speckx",
+    "descendants": 0,
+    "id": 44169553,
+    "score": 2,
+    "time": 1748955710,
+    "title": "Dragon drone uses thrust vectoring to carry objects",
+    "type": "story",
+    "url": "https://newatlas.com/drones/dragon-drone-spidar-university-of-tokyo/"
+  },
+  {
+    "by": "Tadpole9181",
+    "id": 44477742,
+    "kids": [
+      44478188
+    ],
+    "parent": 44476163,
+    "text": "So even when it&#x27;s the populist right doing something, it&#x27;s the &quot;privileged left&quot; to blame for setting the example?<p>Even though this is a new phenomenon that <i>didn&#x27;t</i> happen with the &quot;privileged left&quot;? I don&#x27;t seem to recall HN silencing all criticism of Obama in 2009?",
+    "time": 1751774808,
+    "type": "comment"
+  },
+  {
+    "by": "justjonathan",
+    "id": 44716026,
+    "parent": 44703393,
+    "text": "Source?",
+    "time": 1753738890,
+    "type": "comment"
+  },
+  {
+    "by": "mcenedella",
+    "id": 44345210,
+    "parent": 44345209,
+    "text": "Photography of the Nazi invasion, Kiev Ukraine, 84 years ago today. This photo is a perfect composition, artistically. And we know it’s just day one of a 1,000 days of horror ahead.",
+    "time": 1750582152,
+    "type": "comment"
+  },
+  {
+    "by": "oulipo",
+    "id": 44210894,
+    "kids": [
+      44215978,
+      44231541,
+      44212179
+    ],
+    "parent": 44204347,
+    "text": "Thanks for your question that totally misses the point (get some basic statistics about the population reading HN if you want...)",
+    "time": 1749315622,
+    "type": "comment"
+  },
+  {
+    "by": "kgwgk",
+    "id": 44448835,
+    "kids": [
+      44453851
+    ],
+    "parent": 44448632,
+    "text": "&gt; I don&#x27;t think this cursory look at the abstracts and first pages of these papers is achieving the effect you intended.<p>The only effect intended was my own amusement. I doubted anyone would ever read the comment.<p>&gt; Jurafsky, Lecun &amp; two more fellows dropped this paper recently<p>Somehow they missed that quantum field theory formalism is essential to explain such things.",
+    "time": 1751490407,
+    "type": "comment"
+  },
+  {
+    "by": "tptacek",
+    "id": 44448359,
+    "kids": [
+      44448987
+    ],
+    "parent": 44448010,
+    "text": "Yes, that&#x27;s what I was referring to.",
+    "time": 1751487549,
+    "type": "comment"
+  },
+  {
+    "by": "stephen_g",
+    "id": 44780875,
+    "parent": 44746457,
+    "text": "Yes, but it&#x27;s kind of insulting when they make a song and dance of fake &#x27;evidence-based policy&#x27; and community consultation, with a whole inquiry and inviting experts to testify in front of legislators and tell them that the bills are flawed and unworkable, and that the policy is flawed from the beginning, and they sit there asking questions and nodding and looking concerned, and then it&#x27;s just roundly ignored...<p>This process also got <i>thousands</i> of public submissions, many of which would have been in opposition, but they didn&#x27;t have time to go through them all so they only published a dozen or so...<p>It just makes a mockery of the whole thing.",
+    "time": 1754265312,
+    "type": "comment"
+  },
+  {
+    "by": "hilbert42",
+    "id": 44653744,
+    "parent": 44653459,
+    "text": "Right, one has to ask the obvious question why do we need yet another study to prove the bloody obvious when we knew decades ago it&#x27;s calorific intake that&#x27;s the principal culprit in obesity.<p>Well, here&#x27;s the likely answer. This story appeared on HN some hours ago: <a href=\"https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=44648728\">https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=44648728</a>.<p>Many (including myself) had come to a similar conclusion about this and other controversial matters such as climate change ages ago, which is that these studies into the obvious&#x2F;long-resolved facts are conducted to try and convince the skeptics and disbelievers with even more irrefutable solid evidence.<p>That article puts a very convincing case that that approach is not only a waste of time and effort but it&#x27;s probably counterproductive—trying to convince those who&#x27;ve entrenched beliefs and or find the truth painful only makes their positions even more entrenched.",
+    "time": 1753223386,
+    "type": "comment"
+  },
+  {
+    "by": "impossiblefork",
+    "id": 44906338,
+    "parent": 44906191,
+    "text": "I don&#x27;t necessarily disagree, but surely not more than not having it age limited?",
+    "time": 1755209836,
+    "type": "comment"
+  },
+  {
+    "by": "tornikeo",
+    "id": 44835663,
+    "kids": [
+      44835710
+    ],
+    "parent": 44835287,
+    "text": "I&#x27;m thankful for the US administration to truly give other countries a chance to come forward and something good, and take the center stage.<p>But, as good as that opportunity is, I&#x27;m afraid the 3 years this administration has left wouldn&#x27;t be enough to fully disassemble the US advantage. :)",
+    "time": 1754651346,
+    "type": "comment"
+  }
+]

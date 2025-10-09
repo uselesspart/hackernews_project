@@ -1,0 +1,154 @@
+[
+  {
+    "by": "bookofjoe",
+    "descendants": 344,
+    "id": 44688738,
+    "kids": [
+      44688744,
+      44720889,
+      44690024,
+      44717341,
+      44689122,
+      44723420,
+      44689815,
+      44724894,
+      44720802,
+      44721197,
+      44722544,
+      44722545,
+      44726366,
+      44717262,
+      44689291,
+      44721325,
+      44724299,
+      44717648,
+      44720858,
+      44689523,
+      44731591,
+      44721584,
+      44721852,
+      44724934,
+      44717614,
+      44720854,
+      44722390,
+      44721857,
+      44720586,
+      44723185,
+      44723786,
+      44727843,
+      44721258,
+      44725294,
+      44722467,
+      44717738,
+      44689111,
+      44720755,
+      44727599,
+      44731000,
+      44717904,
+      44727521,
+      44720871,
+      44717804,
+      44720780,
+      44717402,
+      44717758,
+      44727584,
+      44717588,
+      44721526,
+      44720831
+    ],
+    "score": 135,
+    "time": 1753479142,
+    "title": "Tour de France confronts a new threat: Are cyclists using tiny motors?",
+    "type": "story",
+    "url": "https://www.washingtonpost.com/world/2025/07/25/tour-france-bikes-hidden-motors/"
+  },
+  {
+    "by": "VMG",
+    "id": 44502254,
+    "parent": 44499216,
+    "text": "Nirvana fallacy",
+    "time": 1751996426,
+    "type": "comment"
+  },
+  {
+    "by": "mullingitover",
+    "id": 44032523,
+    "kids": [
+      44032866,
+      44032633,
+      44032697,
+      44036949
+    ],
+    "parent": 44031387,
+    "text": "I can&#x27;t think of a less trustworthy group of people on model alignment.<p>They claimed that they had a rogue actor who deployed their &#x27;white genocide&#x27; prompt, but that either means they have zero technical controls in their release pipeline (unforgivable at their scale) or they are lying (unforgivable given their level of responsibility).<p>The prompt issue is a canary in the coal mine, it signals that they will absolutely try to pull stunts of similar to worse severity behind the scenes in model alignment where they think they won&#x27;t get caught.",
+    "time": 1747676657,
+    "type": "comment"
+  },
+  {
+    "by": "bregma",
+    "id": 44258571,
+    "parent": 44257613,
+    "text": "Bicycle pedals at every seat. Maybe with a deadman interlock so that if you stop pedalling your seat falls out of the plane.",
+    "time": 1749740306,
+    "type": "comment"
+  },
+  {
+    "by": "ivandenysov",
+    "id": 44873410,
+    "parent": 44872517,
+    "text": "British Airways operated a similar flight between 2009 and 2020: an A318 between LON and NYC with 32 lie-flat seats<p><a href=\"https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Club_World_London_City\" rel=\"nofollow\">https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;Club_World_London_City</a>",
+    "time": 1754983820,
+    "type": "comment"
+  },
+  {
+    "by": "kreeWall",
+    "id": 44609007,
+    "kids": [
+      44609621
+    ],
+    "parent": 44605213,
+    "text": "Hi Mr. Roberts;<p>Thank you for doing this, yet again - your insights are always so valuable. \nI am on an H1B, and my company applied for a Greencard, and I have received a Priority Date with my i-140 (sorry if I&#x27;m not using the correct terms here, this process confuses me). When am I able to leave my current employer without losing my priority date? Would I need to get my new employer to apply for an H1B transfer and extension for me, or how does that work? Thank you!!",
+    "time": 1752867959,
+    "type": "comment"
+  },
+  {
+    "by": "Pxtl",
+    "id": 44949881,
+    "kids": [
+      44952380,
+      44952036
+    ],
+    "parent": 44945231,
+    "text": "My other big dream would be allowing multiple WHERE clauses that would be semantically ANDed together because that&#x27;s what would happen if you filtered a result set twice.",
+    "time": 1755596622,
+    "type": "comment"
+  },
+  {
+    "by": "kstrauser",
+    "id": 44804812,
+    "kids": [
+      44807358,
+      44808529
+    ],
+    "parent": 44802753,
+    "text": "Yeah, that sounds like more hassle than it’s worth. It should be free to file a DMCA claim with Apple, though, and get it yanked from the App Store.",
+    "time": 1754430392,
+    "type": "comment"
+  },
+  {
+    "by": "mistrial9",
+    "id": 44331433,
+    "parent": 44331375,
+    "text": "yes I agree, more than I can say in a short post",
+    "time": 1750449494,
+    "type": "comment"
+  },
+  {
+    "by": "YaleE360",
+    "id": 44169581,
+    "parent": 44169580,
+    "text": "Indigenous Cambodians are facing intimidation and arrest for documenting the destruction of their forests. While authorities “claim they chase the loggers,” says one community member, “when we show them the evidence, we’re the ones who get punished.”",
+    "time": 1748955818,
+    "type": "comment"
+  }
+]
