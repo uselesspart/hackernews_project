@@ -27,7 +27,7 @@
     -b, --batch-size INT — размер пакетной вставки; по умолчанию 1000.
     --echo — включить вывод SQL-запросов SQLAlchemy.
 
-##### scripts/make_samples.py
+##### scripts/create_samples.py
 
 Создает демонстрационные наборы из большого файла jsonl/jsonl.gz. Каждый набор — отдельный файл (json или jsonl).
 
