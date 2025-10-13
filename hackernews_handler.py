@@ -10,7 +10,7 @@ from html import unescape
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from models import Base, Story, Comment
+from db.models import Base, Story, Comment
 
 class HNHandler:
     def __init__(self, engine, batch_size: int = 1000):
@@ -51,7 +51,6 @@ class HNHandler:
                     story_batch.clear()
                     comment_batch.clear()
 
-            # хвост
             if story_batch or comment_batch:
                 if story_batch:
                     session.add_all(story_batch)

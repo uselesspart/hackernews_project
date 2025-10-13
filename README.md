@@ -1,9 +1,104 @@
-### Установка зависимостей
+## Содержание
+
+## Содержание
+
+- [Установка зависимостей](#установка-зависимостей)
+- [Быстрый старт](#быстрый-старт)
+- [Скрипты](#скрипты)
+  - [Скрипты основной директории](#скрипты-основной-директории)
+    - [scripts.retrieve](#scriptsretrieve)
+    - [scripts.create_samples](#scriptscreate_samples)
+  - [Скрипты для работы с базой данных](#скрипты-для-работы-с-базой-данных)
+    - [db.scripts.ingest](#dbscriptsingest)
+    - [db.scripts.db_connect](#dbscriptsdb_connect)
+    - [db.scripts.export_titles](#dbscriptsexport_titles)
+  - [Скрипты для выполнения анализа](#скрипты-для-выполнения-анализа)
+    - [analytics.embeddings.scripts.classify_tech](#analyticsembeddingsscriptsclassify_tech)
+    - [analytics.embeddings.scripts.lemmatize](#analyticsembeddingsscriptslemmatize)
+    - [analytics.embeddings.scripts.sentences_to_vectors](#analyticsembeddingsscriptssentences_to_vectors)
+    - [analytics.embeddings.scripts.train_model](#analyticsembeddingsscriptstrain_model)
+
+
+## Установка зависимостей
 
     pip install -r requirements.txt
 
-#### Скрипты
-##### scripts/retrieve.py
+## Быстрый старт
+
+Ниже — минимальный конвейер от загрузки данных до привязки технологий к статьям. Используются скрипты: retrieve, ingest, export_titles, sentences_to_vectors, classify_tech.
+
+Предварительно:
+
+Установите зависимости: 
+
+    pip install -r requirements.txt.
+    
+    Подготовьте строку подключения к БД (например, sqlite:///hn.db).
+    Убедитесь, что в БД есть таблицы stories, tech и таблица связи для Story.techs.
+
+Скачиваем диапазон items и сохраняем в файл JSONL.GZ
+
+    python3 -m scripts.retrieve \
+    -o raw_data/hn_data.jsonl.gz \
+    -s 38000000 -e 38010000 \
+    -w 32 --progress-every 10000
+
+Импортируйте истории и комментарии в БД (db.scripts.ingest)
+
+    python3 -m db.scripts.ingest \
+    -d sqlite:///hn.db \
+    -i raw_data/hn_data.jsonl.gz \
+    -b 1000
+
+Выгрузите заголовки историй в TXT (db.scripts.export_titles)
+Сразу сохраняем в путь, который ожидает embedder
+
+    python3 -m db.scripts.export_titles \
+    -d sqlite:///hn.db \
+    -o artifacts/sentences/titles_lem.txt \
+    --format txt
+
+
+Лемматизируйте заголовки (analytics.embeddings.scripts.lemmatize)
+Преобразуем titles.txt → titles_lem.txt (леммы/токены по строкам)
+
+    python3 -m analytics.embeddings.scripts.lemmatize \
+    -i artifacts/sentences/titles.txt \
+    -o artifacts/sentences/titles_lem.txt
+
+Примечание:
+
+Для лемматизации английских слов используется spaCy en_core_web_sm. Если не установлено:
+
+    pip install spacy
+    python -m spacy download en_core_web_sm
+
+При необходимости можно отключить лемматизацию: добавьте флаг --no-lemmatize.
+
+Преобразуйте предложения/леммы в токены для обучения/аналитики (analytics.embeddings.scripts.sentences_to_vectors)
+
+Читает указанный TXT-файл (одна строка — один заголовок/список токенов) и формирует JSONL.GZ с токенами. Путь к входному файлу передаётся аргументом -i/--input.
+
+    python3 -m analytics.embeddings.scripts.sentences_to_vectors \
+    -i artifacts/sentences/titles_lem.txt
+
+Примечание: путь и имена выходных артефактов задаются реализацией класса TitleEmbedder (по умолчанию — в каталоге artifacts/embeddings/words).
+
+Классифицируйте статьи по технологиям (analytics.embeddings.scripts.classify_tech)
+
+    python3 -m analytics.embeddings.scripts.classify_tech \
+    -d sqlite:///hn.db
+
+Скрипт добавит недостающие записи в таблицу Tech и создаст связи многие-ко-многим между Story и Tech на основе PATTERNS. В конце вы увидите сообщение «Обновлено историй: N».
+
+## Скрипты
+Все скрипты запускаются как модули из корневой папки проекта. Пример:
+
+    python3 -m scripts.retrive
+
+### Скрипты основной директории
+
+##### scripts.retrieve
 
 Скачивает элементы Hacker News (items) по диапазону ID и сохраняет в файл jsonl или jsonl.gz.
 
@@ -16,18 +111,7 @@
     --no-compress — сохранить без gzip-компрессии (по умолчанию включена компрессия).
     -p, --progress-every INT — как часто выводить прогресс (в элементах); по умолчанию 10000.
 
-##### scripts/ingest.py
-
-Загружает истории и комментарии из jsonl/jsonl.gz в базу данных через HNHandler.
-
-Аргументы:
-
-    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db, postgresql+psycopg://user:pass@host:5432/dbname) [обязательный].
-    -i, --input PATH [PATH ...] — один или несколько файлов входных данных (jsonl/jsonl.gz) [обязательный].
-    -b, --batch-size INT — размер пакетной вставки; по умолчанию 1000.
-    --echo — включить вывод SQL-запросов SQLAlchemy.
-
-##### scripts/create_samples.py
+##### scripts.create_samples
 
 Создает демонстрационные наборы из большого файла jsonl/jsonl.gz. Каждый набор — отдельный файл (json или jsonl).
 
@@ -42,3 +126,225 @@
     --format {json,jsonl} — формат выходных файлов: json (массив) или jsonl (строка на объект); по умолчанию json.
     --no-pretty — не форматировать JSON (актуально для --format json).
     --keep-deleted — не отфильтровывать элементы с полями deleted/dead.
+
+### Скрипты для работы с базой данных
+
+##### db.scripts.ingest
+
+Загружает истории и комментарии из jsonl/jsonl.gz в базу данных через HNHandler.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db, postgresql+psycopg://user:pass@host:5432/dbname) [обязательный].
+    -i, --input PATH [PATH ...] — один или несколько файлов входных данных (jsonl/jsonl.gz) [обязательный].
+    -b, --batch-size INT — размер пакетной вставки; по умолчанию 1000.
+    --echo — включить вывод SQL-запросов SQLAlchemy.
+
+#### db.scripts.db_connect
+
+Проверка подключения к базе данных: выводит диалект, список таблиц и базовые счётчики по таблицам stories/comments (если существуют).
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+
+Примеры:
+
+    python3 -m db.scripts.db_connect -d sqlite:///hn.db
+    python3 -m db.scripts.db_connect -d postgresql+psycopg://user:pass@host:5432/dbname
+
+Вывод:
+
+    «Подключение OK: …» и диалект (например, sqlite, postgresql).
+    Список таблиц.
+    Счётчики записей для stories и comments, если эти таблицы есть.
+
+Коды возврата:
+
+    0 — подключение успешно.
+    1 — ошибка подключения (например, неверный URL или недоступна БД).
+
+#### db.scripts.export_titles
+
+Выгружает заголовки историй (Story) из БД в файл формата txt, csv или jsonl.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+    -o, --out PATH — путь к выходному файлу (например, samples/titles.txt) [обязательный].
+    --format {txt,csv,jsonl} — формат выгрузки; по умолчанию txt.
+    --limit INT — ограничить количество выгружаемых записей; по умолчанию без ограничения.
+    --keep-deleted — не фильтровать элементы с полями deleted/dead (по умолчанию фильтруются).
+
+Примеры:
+
+TXT: по одному заголовку на строку
+
+    python3 -m db.scripts.export_titles -d sqlite:///hn.db -o samples/titles.txt --format txt
+
+CSV: с заголовком "id,title"
+
+    python3 -m db.scripts.export_titles -d sqlite:///hn.db -o samples/titles.csv --format csv
+
+JSONL: одна строка — один объект {"id": ..., "title": "..."}
+
+    python3 -m db.scripts.export_titles -d sqlite:///hn.db -o samples/titles.jsonl --format jsonl
+
+Ограничение числа записей и сохранение deleted/dead
+
+    python3 -m db.scripts.export_titles -d sqlite:///hn.db -o samples/titles.txt --limit 1000 --keep-deleted
+
+Вывод:
+
+    По завершении печатает путь к созданному файлу («Готово: экспорт заголовков в …»).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — выгрузка прошла успешно.
+    1 — ошибка (например, недоступна БД, нет прав на запись файла).
+
+### Скрипты для выполнения анализа
+
+#### analytics.embeddings.scripts.classify_tech
+
+Классифицирует статьи по технологиям на основе PATTERNS: добавляет недостающие технологии в таблицу Tech и создаёт связи многие-ко-многим между Story и Tech.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+
+Примеры:
+
+    python3 -m analytics.embeddings.scripts.classify_tech -d sqlite:///hn.db
+    python3 -m analytics.embeddings.scripts.classify_tech -d postgresql+psycopg://user:pass@host:5432/dbname
+
+Вывод:
+
+    Печатает количество обновлённых историй: «Обновлено историй: N».
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — классификация завершена успешно.
+    1 — ошибка (например, отсутствуют таблицы tech/stories или недоступна БД).
+
+Замечания:
+
+    Ожидается, что таблицы stories, tech и таблица связи для Story.techs уже существуют.
+    Список технологий берётся из analytics.embeddings.patterns.PATTERNS. Убедитесь, что он импортируется корректно.
+
+#### analytics.embeddings.scripts.lemmatize
+
+Лемматизация/токенизация заголовков из TXT → TXT (по строкам). На вход — файл, где каждая строка это один заголовок. На выход — файл с леммами/токенами, разделёнными пробелами, по одной строке на исходный заголовок.
+
+Аргументы:
+
+    -i, --input PATH — путь к входному TXT (по одному заголовку на строку) [обязательный].
+    -o, --output PATH — путь к выходному TXT (леммы по строкам) [обязательный].
+    --keep-punct — оставлять знаки препинания как отдельные токены.
+    --no-lemmatize — только токенизация, без лемматизации английских слов.
+    --num-token STR — маркер для чисел (по умолчанию <NUM>; укажите None, чтобы оставлять числа как есть).
+    --no-lower — не приводить к нижнему регистру перед лемматизацией.
+
+Примеры:
+
+Базовая лемматизация англ. слов, числа → <NUM>
+
+    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/titles_lem.txt
+
+Только токенизация, без лемм; оставить пунктуацию
+
+    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/tokens.txt --no-lemmatize --keep-punct
+
+Числа не заменять: num-token=None
+
+    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/titles_lem.txt --num-token None
+
+Вывод:
+
+    Создаёт указанный TXT-файл с результатами; каждая строка — токены/леммы исходного заголовка.
+    Пустые строки сохраняются как пустые.
+
+Коды возврата:
+
+    0 — успешно.
+    1 — ошибка (например, отсутствует входной файл).
+
+Примечание:
+
+    Для лемматизации английских слов используется модель spaCy en_core_web_sm. Установите заранее:
+        pip install spacy
+        python -m spacy download en_core_web_sm
+    Если spaCy недоступен, используйте --no-lemmatize.
+
+#### analytics.embeddings.scripts.sentences_to_vectors
+
+Преобразует файл предложений/лемм (TXT, одна строка — один заголовок/список токенов) в JSONL.GZ с токенами для обучения моделей. Обёртка над классом TitleEmbedder и его методом sentences_to_vectors.
+
+Аргументы:
+
+    -i, --input PATH — путь к входному TXT (например, artifacts/sentences/titles_lem.txt) [обязательный].
+
+Примеры:
+
+Генерировать токены из лемматизированных заголовков
+
+    python3 -m analytics.embeddings.scripts.sentences_to_vectors \
+    -i artifacts/sentences/titles_lem.txt
+
+Вывод:
+
+    Печатает «Готово: токены сгенерированы из …» по завершении.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — успешно.
+    1 — ошибка (например, отсутствует входной файл).
+
+Замечания:
+
+    Путь выходного файла и структура артефактов определяются реализацией TitleEmbedder. По умолчанию они размещаются в artifacts/embeddings/words.
+
+
+#### analytics.embeddings.scripts.train_model
+
+Тренирует модель Word2Vec по файлу токенов в формате JSONL.GZ (одна строка — список токенов). Сохраняет модель и текстовый формат в указанную директорию.
+
+Аргументы:
+
+    -p, --path PATH — путь к входному файлу JSONL.GZ с токенами [обязательный].
+    -o, --out-dir DIR — директория для сохранения модели/векторов; по умолчанию artifacts/embeddings/words.
+    --vector-size INT — размерность эмбеддингов; по умолчанию 300.
+    --window INT — размер окна контекста; по умолчанию 5.
+    --min-count INT — минимальная частота токена; по умолчанию 2.
+    --sg {0,1} — архитектура: 0=CBOW, 1=Skip-gram; по умолчанию 1.
+    --epochs INT — число эпох обучения; по умолчанию 5.
+    --workers INT — число потоков; по умолчанию os.cpu_count().
+
+Примеры:
+
+Обучить модель на файле токенов и сохранить артефакты
+
+    python3 -m analytics.embeddings.scripts.train_model \
+    -p artifacts/embeddings/words/titles.tokens.jsonl.gz \
+    --vector-size 300 --window 5 --min-count 2 --epochs 5
+
+Вывод:
+
+    Сохраняет:
+        файл модели w2v_<base>_<vector_size>d.model;
+        текстовый формат w2v_<base>_<vector_size>d.txt
+        в директории --out-dir.
+    Печатает пути сохранённых файлов: «Сохранено: …».
+
+Коды возврата:
+
+    0 — обучение завершено успешно.
+    1 — ошибка (например, отсутствует входной файл, проблемы с чтением JSONL.GZ).
+
+Подсказка:
+
+    После обучения используйте model.wv.most_similar("token", topn=10) для поиска ближайших слов, и model.wv.similar_by_vector(vec) — для ближайших к произвольному вектору.
+
