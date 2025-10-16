@@ -8,18 +8,25 @@
     - [scripts.create_samples](#scriptscreate_samples)
   - [Скрипты для работы с базой данных](#скрипты-для-работы-с-базой-данных)
     - [db.scripts.ingest](#dbscriptsingest)
-    - [db.scripts.db_connect](#dbscriptsdb_connect)
     - [db.scripts.export_titles](#dbscriptsexport_titles)
+    - [db.scripts.export_tech_names](#dbscriptsexport_tech_names)
+    - [db.scripts.export_context](#dbscriptsexport_context)
   - [Скрипты для выполнения анализа](#скрипты-для-выполнения-анализа)
     - [analytics.embeddings.scripts.classify_tech](#analyticsembeddingsscriptsclassify_tech)
+    - [analytics.embeddings.scripts.build_rel_matrix](#analyticsembeddingsscriptsbuild_rel_matrix)
     - [analytics.embeddings.scripts.lemmatize](#analyticsembeddingsscriptslemmatize)
     - [analytics.embeddings.scripts.sentences_to_vectors](#analyticsembeddingsscriptssentences_to_vectors)
     - [analytics.embeddings.scripts.train_model](#analyticsembeddingsscriptstrain_model)
 
+  - [Скрипты для визуализации](#скрипты-для-визуализации)
+    - [visualization.draw_relationship_map](#visualizationdraw_relationship_map)
+
 
 ## Установка зависимостей
 
-    pip install -r requirements.txt
+    pip install -r requirements.txt.
+    pip install spacy
+    python -m spacy download en_core_web_sm
 
 ## Быстрый старт
 
@@ -30,9 +37,8 @@
 Установите зависимости: 
 
     pip install -r requirements.txt.
-    
-    Подготовьте строку подключения к БД (например, sqlite:///hn.db).
-    Убедитесь, что в БД есть таблицы stories, tech и таблица связи для Story.techs.
+    pip install spacy
+    python -m spacy download en_core_web_sm
 
 Скачиваем диапазон items и сохраняем в файл JSONL.GZ
 
@@ -48,21 +54,21 @@
     -i raw_data/hn_data.jsonl.gz \
     -b 1000
 
-Выгрузите заголовки историй в TXT (db.scripts.export_titles)
+Выгрузите заголовки и комментарии историй в TXT (db.scripts.export_context)
 Сразу сохраняем в путь, который ожидает embedder
 
-    python3 -m db.scripts.export_titles \
+    python3 -m db.scripts.export_context \
     -d sqlite:///hn.db \
-    -o artifacts/sentences/titles_lem.txt \
+    -o artifacts/sentences/context.txt \
     --format txt
 
 
 Лемматизируйте заголовки (analytics.embeddings.scripts.lemmatize)
-Преобразуем titles.txt → titles_lem.txt (леммы/токены по строкам)
+Преобразуем context.txt → context_lem.txt (леммы/токены по строкам)
 
     python3 -m analytics.embeddings.scripts.lemmatize \
-    -i artifacts/sentences/titles.txt \
-    -o artifacts/sentences/titles_lem.txt
+    -i artifacts/sentences/context.txt \
+    -o artifacts/sentences/context_lem.txt
 
 Примечание:
 
@@ -78,16 +84,9 @@
 Читает указанный TXT-файл (одна строка — один заголовок/список токенов) и формирует JSONL.GZ с токенами. Путь к входному файлу передаётся аргументом -i/--input.
 
     python3 -m analytics.embeddings.scripts.sentences_to_vectors \
-    -i artifacts/sentences/titles_lem.txt
+    -i artifacts/sentences/context_lem.txt
 
 Примечание: путь и имена выходных артефактов задаются реализацией класса TitleEmbedder (по умолчанию — в каталоге artifacts/embeddings/words).
-
-Классифицируйте статьи по технологиям (analytics.embeddings.scripts.classify_tech)
-
-    python3 -m analytics.embeddings.scripts.classify_tech \
-    -d sqlite:///hn.db
-
-Скрипт добавит недостающие записи в таблицу Tech и создаст связи многие-ко-многим между Story и Tech на основе PATTERNS. В конце вы увидите сообщение «Обновлено историй: N».
 
 ## Скрипты
 Все скрипты запускаются как модули из корневой папки проекта. Пример:
@@ -138,30 +137,6 @@
     -b, --batch-size INT — размер пакетной вставки; по умолчанию 1000.
     --echo — включить вывод SQL-запросов SQLAlchemy.
 
-#### db.scripts.db_connect
-
-Проверка подключения к базе данных: выводит диалект, список таблиц и базовые счётчики по таблицам stories/comments (если существуют).
-
-Аргументы:
-
-    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
-
-Примеры:
-
-    python3 -m db.scripts.db_connect -d sqlite:///hn.db
-    python3 -m db.scripts.db_connect -d postgresql+psycopg://user:pass@host:5432/dbname
-
-Вывод:
-
-    «Подключение OK: …» и диалект (например, sqlite, postgresql).
-    Список таблиц.
-    Счётчики записей для stories и comments, если эти таблицы есть.
-
-Коды возврата:
-
-    0 — подключение успешно.
-    1 — ошибка подключения (например, неверный URL или недоступна БД).
-
 #### db.scripts.export_titles
 
 Выгружает заголовки историй (Story) из БД в файл формата txt, csv или jsonl.
@@ -202,6 +177,87 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
     0 — выгрузка прошла успешно.
     1 — ошибка (например, недоступна БД, нет прав на запись файла).
 
+#### db.scripts.export_tech_names
+
+Выгружает список технологий из таблицы Tech в файл формата txt, csv или jsonl.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+    -o, --out PATH — путь к выходному файлу (например, tech_names.txt) [обязательный].
+    --format {txt,csv,jsonl} — формат выгрузки; по умолчанию txt.
+    --limit INT — ограничить количество выгружаемых записей; по умолчанию без ограничения.
+
+Примеры:
+
+TXT: по одному названию технологии на строку
+
+    python3 -m db.scripts.export_tech_names -d sqlite:///hn.db -o tech_names.txt --format txt
+
+CSV: с заголовком "id,name"
+
+    python3 -m db.scripts.export_tech_names -d sqlite:///hn.db -o tech_names.csv --format csv --limit 100
+
+JSONL: одна строка — один объект {"id": ..., "name": "..."}
+
+    python3 -m db.scripts.export_tech_names -d sqlite:///hn.db -o tech_names.jsonl --format jsonl
+
+Вывод:
+
+    По завершении печатает путь к созданному файлу («Готово: экспорт технологий в …»).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — выгрузка прошла успешно.
+    1 — ошибка (например, недоступна БД, нет таблицы tech).
+
+#### db.scripts.export_context
+
+Выгружает заголовки историй (Story) вместе с агрегированными комментариями (Comment) в файл формата txt, csv или jsonl.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+    -o, --out PATH — путь к выходному файлу (например, stories_with_context.txt) [обязательный].
+    --format {txt,csv,jsonl} — формат выгрузки; по умолчанию txt.
+    --limit INT — ограничить количество выгружаемых записей; по умолчанию без ограничения.
+    --keep-deleted — не фильтровать элементы с полями deleted/dead (по умолчанию фильтруются).
+
+Примеры:
+
+TXT: заголовок + все комментарии в одной строке
+
+    python3 -m db.scripts.export_context -d sqlite:///hn.db -o stories_context.txt --format txt
+
+CSV: с заголовком "id,title,context"
+
+    python3 -m db.scripts.export_context -d sqlite:///hn.db -o stories_context.csv --format csv --limit 5000
+
+JSONL: одна строка — один объект {"id": ..., "title": "...", "context": "..."}
+
+    python3 -m db.scripts.export_context -d sqlite:///hn.db -o stories_context.jsonl --format jsonl
+
+Включая удалённые записи
+
+    python3 -m db.scripts.export_context -d sqlite:///hn.db -o all_stories.txt --keep-deleted
+
+Вывод:
+
+    По завершении печатает путь к созданному файлу («Готово: экспорт заголовков и комментариев в …»).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — выгрузка прошла успешно.
+    1 — ошибка (например, недоступна БД, нет таблиц stories/comments).
+
+Замечания:
+
+Текст автоматически очищается через функцию clean_text.
+Batch-обработка по 10,000 записей для экономии памяти.
+Комментарии агрегируются через SQL string_agg (PostgreSQL) или аналог для других СУБД.
+
 ### Скрипты для выполнения анализа
 
 #### analytics.embeddings.scripts.classify_tech
@@ -229,8 +285,37 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
 Замечания:
 
-    Ожидается, что таблицы stories, tech и таблица связи для Story.techs уже существуют.
-    Список технологий берётся из analytics.embeddings.patterns.PATTERNS. Убедитесь, что он импортируется корректно.
+Ожидается, что таблицы stories, tech и таблица связи для Story.techs уже существуют.
+Список технологий берётся из analytics.embeddings.patterns.PATTERNS. Убедитесь, что он импортируется корректно.
+
+#### analytics.embeddings.scripts.build_rel_matrix
+
+Строит матрицу косинусного сходства между технологиями на основе Word2Vec эмбеддингов. Принимает файл со списком технологий и обученную модель, выдаёт CSV-матрицу сходства.
+
+Аргументы:
+
+    -i, --input PATH — файл со списком технологий (одна на строку) [обязательный].
+    -m, --model PATH — путь к обученной Word2Vec модели (.model) [обязательный].
+    -o, --output PATH — путь к выходному CSV файлу с матрицей сходства [обязательный].
+
+Примеры:
+
+Построить матрицу сходства для списка технологий
+
+    python3 -m analytics.embeddings.scripts.build_rel_matrix \
+    -i tech_names.txt \
+    -m artifacts/embeddings/words/w2v_tokens_300d.model \
+    -o artifacts/similarity_matrix.csv
+
+Вывод:
+
+    Создаёт CSV-файл с матрицей сходства (строки и столбцы — названия технологий, значения — косинусное сходство от 0 до 1).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — матрица построена успешно.
+    1 — ошибка (например, отсутствует модель, недостаточно токенов в словаре).
 
 #### analytics.embeddings.scripts.lemmatize
 
@@ -244,6 +329,8 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
     --no-lemmatize — только токенизация, без лемматизации английских слов.
     --num-token STR — маркер для чисел (по умолчанию <NUM>; укажите None, чтобы оставлять числа как есть).
     --no-lower — не приводить к нижнему регистру перед лемматизацией.
+    --preserve-words PATH — путь к файлу со словами, которые не нужно лемматизировать (по одному на строку).
+    --add-preserve WORD [WORD ...] — дополнительные слова для защиты от лемматизации (через пробел).
 
 Примеры:
 
@@ -255,6 +342,20 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
     python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/tokens.txt --no-lemmatize --keep-punct
 
+Защита специфичных технических терминов
+
+    python3 -m analytics.embeddings.scripts.lemmatize \
+    -i samples/titles.txt \
+    -o artifacts/sentences/titles_lem.txt \
+    --add-preserve windows kubernetes c++
+
+С файлом защищённых слов
+
+    python3 -m analytics.embeddings.scripts.lemmatize \
+    -i samples/titles.txt \
+    -o artifacts/sentences/titles_lem.txt \
+    --preserve-words preserve_words.txt
+
 Числа не заменять: num-token=None
 
     python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/titles_lem.txt --num-token None
@@ -263,6 +364,7 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
     Создаёт указанный TXT-файл с результатами; каждая строка — токены/леммы исходного заголовка.
     Пустые строки сохраняются как пустые.
+    Печатает количество защищённых слов и примеры.
 
 Коды возврата:
 
@@ -271,10 +373,11 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
 Примечание:
 
-    Для лемматизации английских слов используется модель spaCy en_core_web_sm. Установите заранее:
-        pip install spacy
-        python -m spacy download en_core_web_sm
-    Если spaCy недоступен, используйте --no-lemmatize.
+Для лемматизации английских слов используется модель spaCy en_core_web_sm. Установите заранее:
+    pip install spacy
+    python -m spacy download en_core_web_sm
+Если spaCy недоступен, используйте --no-lemmatize.
+Защищённые слова по умолчанию: windows, c++, kubernetes, jenkins, postgres, redis, aws, gcp, ios, macos.
 
 #### analytics.embeddings.scripts.sentences_to_vectors
 
@@ -303,7 +406,7 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
 Замечания:
 
-    Путь выходного файла и структура артефактов определяются реализацией TitleEmbedder. По умолчанию они размещаются в artifacts/embeddings/words.
+Путь выходного файла и структура артефактов определяются реализацией TitleEmbedder. По умолчанию они размещаются в artifacts/embeddings/words.
 
 
 #### analytics.embeddings.scripts.train_model
@@ -320,6 +423,7 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
     --sg {0,1} — архитектура: 0=CBOW, 1=Skip-gram; по умолчанию 1.
     --epochs INT — число эпох обучения; по умолчанию 5.
     --workers INT — число потоков; по умолчанию os.cpu_count().
+    --aggregate-synonyms — агрегировать синонимы из patterns.py после обучения.
 
 Примеры:
 
@@ -344,5 +448,45 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
 Подсказка:
 
-    После обучения используйте model.wv.most_similar("token", topn=10) для поиска ближайших слов, и model.wv.similar_by_vector(vec) — для ближайших к произвольному вектору.
+После обучения используйте model.wv.most_similar("token", topn=10) для поиска ближайших слов, и model.wv.similar_by_vector(vec) — для ближайших к произвольному вектору.
 
+### Скрипты для визуализации
+
+#### visualization.draw_relationship_map
+
+Визуализирует 2D-карту технологических связей на основе матрицы сходства. Использует t-SNE для снижения размерности и автоматическое позиционирование меток для избежания перекрытий.
+
+Аргументы:
+
+    -m, --matrix PATH — путь к CSV-файлу с матрицей сходства [обязательный].
+    -t, --tech PATH — файл со списком технологий для визуализации (одна на строку) [обязательный].
+    -o, --output PATH — путь к выходному изображению (например, tech_map.png) [обязательный].
+
+Примеры:
+
+Построить карту отношений между технологиями
+
+    python3 -m visualization.draw_relationship_map \
+    -m artifacts/similarity_matrix.csv \
+    -t tech_names.txt \
+    -o tech_relationships_map.png
+
+Вывод:
+
+    Создаёт PNG-изображение с 2D-картой технологий.
+    Печатает путь к сохранённому файлу.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — визуализация создана успешно.
+    1 — ошибка (например, отсутствует матрица сходства, недостаточно технологий).
+
+Замечания:
+
+Использует t-SNE с perplexity=min(30, n-1) и random_state=42 для воспроизводимости.
+Библиотека adjustText автоматически позиционирует метки и рисует стрелки к точкам.
+Близкие на карте технологии семантически похожи (по эмбеддингам).
+Размер изображения: 12×8 дюймов, DPI: 300.
+
+![Relationship map](img/relationship_map.png "Result")

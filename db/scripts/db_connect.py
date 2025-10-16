@@ -20,8 +20,6 @@ def main() -> int:
         print(f"Подключение OK: {args.db}")
         print(f"Диалект: {engine.dialect.name}")
         print(f"Таблицы: {', '.join(tables) if tables else '(нет)'}")
-
-        # Пробуем считать записи в stories/comments, если таблицы существуют
         with engine.connect() as conn:
             for t in ("stories", "comments"):
                 if t in tables:

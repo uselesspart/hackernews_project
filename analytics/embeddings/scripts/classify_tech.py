@@ -1,5 +1,3 @@
-from __future__ import annotations
-from pathlib import Path
 import re
 from typing import Dict, List, Iterable, Set
 import argparse
@@ -7,15 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from db import session_scope
-# поправьте импорт моделей под ваш проект
 from db.models import Story, Tech
-# и импорт заранее собранных паттернов
-from analytics.embeddings.patterns import PATTERNS  # Dict[str, List[re.Pattern]]
-
-
+from analytics.embeddings.patterns import PATTERNS
 
 def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]:
-    """Создаёт отсутствующие технологии, возвращает name -> Tech."""
     existing: Dict[str, Tech] = {
         t.name: t for t in session.execute(select(Tech)).scalars().all()
     }
@@ -29,7 +22,6 @@ def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]
 
 
 def match_techs(title: str, patterns: Dict[str, List[re.Pattern]]) -> Set[str]:
-    """Возвращает множество имён технологий, найденных в заголовке."""
     if not title:
         return set()
     text = title.lower()
@@ -46,10 +38,6 @@ def classify_stories(session: Session,
                      patterns: Dict[str, List[re.Pattern]] = PATTERNS,
                      batch_size: int = 1000,
                      dry_run: bool = False) -> int:
-    """
-    Проставляет связи Story↔Tech по заголовкам. Таблицы и движок — уже существуют.
-    Возвращает количество обновлённых историй.
-    """
     tech_by_name = ensure_techs(session, patterns.keys())
 
     updated = 0
