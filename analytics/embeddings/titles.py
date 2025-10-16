@@ -1,9 +1,6 @@
-from __future__ import annotations
-
 import json
 import gzip
 from pathlib import Path
-from typing import List
 
 from analytics.embeddings.scripts.lemmatize import iter_tokenized_lines
 
@@ -38,7 +35,7 @@ class TitleEmbedder:
     def sentences_to_vectors(self, path: str | Path) -> None:
         save_token_matrix_jsonl_gz(
             path,
-            out_path="artifacts/embeddings/words/titles.tokens.jsonl.gz",
+            out_path="artifacts/embeddings/words/titles.tokens3.jsonl.gz",
             keep_punct=False,
             num_token="<NUM>",
             lower=True,

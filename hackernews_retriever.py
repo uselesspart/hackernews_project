@@ -1,12 +1,4 @@
 import requests
-import json
-import os
-import pandas as pd
-import itertools
-import gzip
-from datetime import datetime
-from time import perf_counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class HNRetriever:
 

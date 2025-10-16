@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 from typing import List, Optional
 
@@ -12,7 +10,6 @@ class Base(DeclarativeBase):
     pass
 
 
-# Ассоциационная таблица many-to-many между Story и Tech
 story_tech = Table(
     "story_tech",
     Base.metadata,
@@ -31,10 +28,8 @@ class Story(Base):
     time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     title: Mapped[Optional[str]] = mapped_column(String)
     url: Mapped[Optional[str]] = mapped_column(String)
-    # Важно: не используйте [] как default для JSON — только callable
     kids: Mapped[list[int]] = mapped_column(JSON, default=list)
 
-    # many-to-many к Tech
     techs: Mapped[List["Tech"]] = relationship(
         secondary=story_tech,
         back_populates="stories",

@@ -40,7 +40,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bC#\b"), _re(r"\bcsharp\b"), _re(r"\b\.?dotnet\b"), _re(r"\b\.NET\b")
     ],
     "cpp": [
-        _re(r"\bC\+\+\b"), _re(r"\bc\+\+\d{2}\b"), _re(r"\bcpp\b"), _re(r"\bcxx\b")
+        _re(r"\bC\+\+\b"), _re(r"\bc\+\+\d{2}\b"), _re(r"\bcpp\b"), _re(r"\bcxx\b"), _re(r"\bc++\b")
     ],
     "c": [
         _re(r"\bC(?:\s*language|11|17|99)\b"), _re(r"\blibc\b"), _re(r"\bclang\b"), _re(r"\bgcc\b")
@@ -224,7 +224,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
     "postgresql": [
         _re(r"\bpostgres(?:ql)?\b"),
         _re(r"\bpsql\b"),
-        _re(r"\bpsycopg2?\b"),      # исправлено с psycog → psycopg
+        _re(r"\bpsycopg2?\b"),
         _re(r"\bpg_(?:dump|restore|ctl|bench|stat)\b"),
         _re(r"\btimescaledb\b"),
         _re(r"\bpgvector\b"),

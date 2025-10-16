@@ -1,10 +1,6 @@
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
-
 from ..titles import TitleEmbedder
-
 
 def parse_args():
     ap = argparse.ArgumentParser(
@@ -17,7 +13,6 @@ def parse_args():
         help="Путь к входному TXT (по одной строке = заголовок/леммы/токены)"
     )
     return ap.parse_args()
-
 
 def main() -> int:
     args = parse_args()
@@ -34,7 +29,6 @@ def main() -> int:
     except Exception as e:
         print(f"Ошибка: {e}")
         return 1
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

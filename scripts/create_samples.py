@@ -49,7 +49,7 @@ def reservoir_sample(stream: Iterator[Dict[str, Any]],
         if len(res) < k:
             res.append(item)
         else:
-            j = rnd.randint(1, t)  # включительно
+            j = rnd.randint(1, t)
             if j <= k:
                 res[j - 1] = item
     return res
