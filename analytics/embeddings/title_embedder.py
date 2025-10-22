@@ -2,7 +2,7 @@ import json
 import gzip
 from pathlib import Path
 
-from analytics.embeddings.scripts.lemmatize import iter_tokenized_lines
+from utils.lemmatize import iter_tokenized_lines
 
 def save_token_matrix_jsonl_gz(
     src_path: str | Path,

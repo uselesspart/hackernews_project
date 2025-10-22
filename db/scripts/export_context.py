@@ -1,13 +1,10 @@
 import argparse
 from pathlib import Path
-import csv
-import json
 from sqlalchemy import select, func
 
 from db.models import Comment, Story
 from db import session_scope
-from db.queries import iter_story_titles_comments
-from scripts.clean_text import clean_text
+from utils.clean_text import clean_text
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -29,8 +26,6 @@ def main() -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         with session_scope(args.db) as session:
-            rows = iter_story_titles_comments(session, keep_deleted=args.keep_deleted, limit=args.limit)
-
             if args.format == "txt":
                 with open(out_path, "w", encoding="utf-8") as f:
                     stmt = (
@@ -49,18 +44,10 @@ def main() -> int:
                         clean_lines = [clean_text(line) + "\n" for line in lines]
                         f.writelines(clean_lines)
                         print(lines)
-
             elif args.format == "csv":
-                with open(out_path, "w", encoding="utf-8", newline="") as f:
-                    w = csv.writer(f)
-                    w.writerow(["id", "title", "context"])
-                    for _id, title, context in rows:
-                        w.writerow([_id, title, context])
-
+                pass
             else:
-                with open(out_path, "w", encoding="utf-8") as f:
-                    for _id, title, context in rows:
-                        f.write(json.dumps({"id": _id, "title": title, "context": context}, ensure_ascii=False) + "\n")
+                pass
 
         print(f"Готово: экспорт заголовков и комментариев в {out_path}")
         return 0
