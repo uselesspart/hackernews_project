@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from ..titles import TitleEmbedder
+from ..title_embedder import TitleEmbedder
 
 def parse_args():
     ap = argparse.ArgumentParser(

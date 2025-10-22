@@ -2,7 +2,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from .models import Story, Tech, Comment
 from typing import Tuple, Iterator
-from scripts.clean_text import clean_text
+from utils.clean_text import clean_text
 
 def iter_story_titles(session: Session,
                       keep_deleted: bool = False,

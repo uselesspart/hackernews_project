@@ -11,15 +11,16 @@
     - [db.scripts.export_titles](#dbscriptsexport_titles)
     - [db.scripts.export_tech_names](#dbscriptsexport_tech_names)
     - [db.scripts.export_context](#dbscriptsexport_context)
+    - [db.scripts.export_comments_for_techs](#dbscriptsexport_comments_for_techs)
   - [Скрипты для выполнения анализа](#скрипты-для-выполнения-анализа)
     - [analytics.embeddings.scripts.classify_tech](#analyticsembeddingsscriptsclassify_tech)
     - [analytics.embeddings.scripts.build_rel_matrix](#analyticsembeddingsscriptsbuild_rel_matrix)
-    - [analytics.embeddings.scripts.lemmatize](#analyticsembeddingsscriptslemmatize)
+    - [analytics.embeddings.scripts.lemmatize_file](#analyticsembeddingsscriptslemmatize_file)
     - [analytics.embeddings.scripts.sentences_to_vectors](#analyticsembeddingsscriptssentences_to_vectors)
     - [analytics.embeddings.scripts.train_model](#analyticsembeddingsscriptstrain_model)
-
   - [Скрипты для визуализации](#скрипты-для-визуализации)
     - [visualization.draw_relationship_map](#visualizationdraw_relationship_map)
+    - [visualization.draw_wordcloud](#visualizationdraw_wordcloud)
 
 
 ## Установка зависимостей
@@ -63,10 +64,10 @@
     --format txt
 
 
-Лемматизируйте заголовки (analytics.embeddings.scripts.lemmatize)
+Лемматизируйте заголовки (analytics.embeddings.scripts.lemmatize_file)
 Преобразуем context.txt → context_lem.txt (леммы/токены по строкам)
 
-    python3 -m analytics.embeddings.scripts.lemmatize \
+    python3 -m analytics.embeddings.scripts.lemmatize_file \
     -i artifacts/sentences/context.txt \
     -o artifacts/sentences/context_lem.txt
 
@@ -258,6 +259,30 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 Batch-обработка по 10,000 записей для экономии памяти.
 Комментарии агрегируются через SQL string_agg (PostgreSQL) или аналог для других СУБД.
 
+#### db.scripts.export_comments_for_techs
+
+Выгружает комментарии для каждой из технологий в отдельные файлы txt.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+    -o, --out PATH — путь к выходной папке (например, artifacts/comments/) [обязательный].
+    -m, --minimum INT - минимальное число статей о технологии для выгрузки комментариев [обязательный].
+
+Примеры:
+
+    python3 -m db.scripts.export_comments_for_techs -d sqlite:///hn.db -o artifacts/comments/ -m 100
+
+Вывод:
+
+    По завершении печатает путь к созданному файлу («Готово: экспорт комментариев в ...»).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — выгрузка прошла успешно.
+    1 — ошибка (например, недоступна БД, нет таблиц stories/comments).
+
 ### Скрипты для выполнения анализа
 
 #### analytics.embeddings.scripts.classify_tech
@@ -317,7 +342,7 @@ Batch-обработка по 10,000 записей для экономии па
     0 — матрица построена успешно.
     1 — ошибка (например, отсутствует модель, недостаточно токенов в словаре).
 
-#### analytics.embeddings.scripts.lemmatize
+#### analytics.embeddings.scripts.lemmatize_file
 
 Лемматизация/токенизация заголовков из TXT → TXT (по строкам). На вход — файл, где каждая строка это один заголовок. На выход — файл с леммами/токенами, разделёнными пробелами, по одной строке на исходный заголовок.
 
@@ -336,29 +361,29 @@ Batch-обработка по 10,000 записей для экономии па
 
 Базовая лемматизация англ. слов, числа → <NUM>
 
-    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/titles_lem.txt
+    python3 -m analytics.embeddings.scripts.lemmatize_file -i samples/titles.txt -o artifacts/sentences/titles_lem.txt
 
 Только токенизация, без лемм; оставить пунктуацию
 
-    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/tokens.txt --no-lemmatize --keep-punct
+    python3 -m analytics.embeddings.scripts.lemmatize_file -i samples/titles.txt -o artifacts/sentences/tokens.txt --no-lemmatize --keep-punct
 
 Защита специфичных технических терминов
 
-    python3 -m analytics.embeddings.scripts.lemmatize \
+    python3 -m analytics.embeddings.scripts.lemmatize_file \
     -i samples/titles.txt \
     -o artifacts/sentences/titles_lem.txt \
     --add-preserve windows kubernetes c++
 
 С файлом защищённых слов
 
-    python3 -m analytics.embeddings.scripts.lemmatize \
+    python3 -m analytics.embeddings.scripts.lemmatize_file \
     -i samples/titles.txt \
     -o artifacts/sentences/titles_lem.txt \
     --preserve-words preserve_words.txt
 
 Числа не заменять: num-token=None
 
-    python3 -m analytics.embeddings.scripts.lemmatize -i samples/titles.txt -o artifacts/sentences/titles_lem.txt --num-token None
+    python3 -m analytics.embeddings.scripts.lemmatize_file -i samples/titles.txt -o artifacts/sentences/titles_lem.txt --num-token None
 
 Вывод:
 
@@ -490,3 +515,34 @@ Batch-обработка по 10,000 записей для экономии па
 Размер изображения: 12×8 дюймов, DPI: 300.
 
 ![Relationship map](img/relationship_map.png "Result")
+
+#### visualization.draw_wordcloud
+
+Визуализирует облако слов для технологии по комментариям.
+
+Аргументы:
+
+    -i, --input PATH - путь к входному файлу [обязательный].
+    -o, --output PATH - путь к выходному файлу [обязательный].
+    --extra, - дополнительные слова, которые не нужно учитывать [обязательный].
+
+Примеры:
+
+Построить карту отношений между технологиями
+
+    python3 -m visualization.draw_wordcloud \
+    -i artifacts/java_lem.txt \
+    -o artifacts/wordcloud.png \
+
+Вывод:
+
+    Создаёт PNG-изображение с облаком слов.
+    Печатает путь к сохранённому файлу.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — визуализация создана успешно.
+    1 — ошибка.
+
+![Wordcloud](img/wordcloud.png "Result")
