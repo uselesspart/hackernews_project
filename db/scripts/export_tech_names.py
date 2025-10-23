@@ -37,7 +37,7 @@ def main() -> int:
                     for _id, name in rows:
                         w.writerow([_id, name])
 
-            else:  # jsonl
+            else:
                 with open(out_path, "w", encoding="utf-8") as f:
                     for _id, name in rows:
                         f.write(json.dumps({"id": _id, "name": name}, ensure_ascii=False) + "\n")

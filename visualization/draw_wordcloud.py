@@ -73,7 +73,7 @@ NON_ALPHA_RE = re.compile(r"[^a-zA-Zа-яА-Я0-9\- ]+")
 def parse_args():
     p = argparse.ArgumentParser(
         prog="export_titles",
-        description="Выгрузка матрицы отношений в файл"
+        description="Отрисовка облака слов для технологии"
     )
     p.add_argument("-i", "--input", required=True, help="Путь к входному файлу")
     p.add_argument("-o", "--output", required=True, help="Путь к выходному файлу")
@@ -102,7 +102,12 @@ def main() -> int:
                 words.append(line.strip())
         extra_stop = {args.extra}
         freqs = build_frequencies(words, extra_stop=extra_stop)
-        wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='viridis').generate_from_frequencies(freqs)
+        wordcloud = WordCloud(
+            width=800,
+            height=400,
+            background_color='white',
+            colormap='viridis'
+            ).generate_from_frequencies(freqs)
         plt.figure(figsize=(10, 5))
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis('off')
@@ -114,6 +119,6 @@ def main() -> int:
     except Exception as e:
         print(f"Ошибка: {e}")
         return 1
-    
+
 if __name__ == "__main__":
     main()
