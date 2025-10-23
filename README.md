@@ -20,10 +20,12 @@
     - [analytics.embeddings.scripts.sentences_to_vectors](#analyticsembeddingsscriptssentences_to_vectors)
     - [analytics.embeddings.scripts.train_model](#analyticsembeddingsscriptstrain_model)
     - [analytics.embeddings.scripts.calculate_irr](#analyticsembeddingsscriptscalculate_irr)
+    - [analytics.embeddings.scripts.calculate_sentiment](#analyticsembeddingsscriptscalculate_sentiment)
   - [Скрипты для визуализации](#скрипты-для-визуализации)
     - [visualization.draw_relationship_map](#visualizationdraw_relationship_map)
     - [visualization.draw_wordcloud](#visualizationdraw_wordcloud)
     - [visualization.draw_irr_plot](#visualizationdraw_irr_plot)
+    - [visualization.draw_sentiment_plot](#visualizationdraw_sentiment_plot)
 
 
 ## Установка зависимостей
@@ -528,6 +530,49 @@ Batch-обработка по 10,000 записей для экономии па
     0 — рассчет произведен успешно.
     1 — ошибка (например, отсутствует модель).
 
+#### analytics.embeddings.scripts.calculate_sentiment
+
+Рассчитывает эмоциональный отклик в комментариях к статьям о различных технологиях.
+
+Аргументы:
+
+    -i, --input PATH — путь к одному файлу (по одному комментарию в строке).
+    -d, --dir PATH — папка с файлами для пакетной обработки.
+    --pattern PATTERN — глоб-шаблон для выбора файлов в папке; по умолчанию *.txt.
+    --recursive — рекурсивный проход по подпапкам.
+    --titles-kv PATH — путь к модели w2v (заголовки); по умолчанию w2v_titles.kv.
+    --comments-kv PATH — путь к модели w2v (заголовки+комменты); по умолчанию w2v_titles_comments.kv.
+    --mode {lexicon|vader|bootstrap} — режим анализа; по умолчанию lexicon.
+    --keyword WORD — аспект/ключевое слово (опционально).
+    --use-vader — сливать лексикон w2v с VADER.
+    --p FLOAT — степень внимания к ключу; по умолчанию 2.0.
+    --neg-window INT — окно для отрицаний; по умолчанию 3.
+    --threshold FLOAT — порог меток {-1,0,1}; по умолчанию 0.12.
+    --auto-thr — автокалибровка порога по распределению в файле.
+    --auto-percent INT — процентиль |score| для автопорога; по умолчанию 60.
+    --top-percent INT — топ-% уверенных примеров для bootstrap; по умолчанию 20.
+    --out-csv PATH — итоговый CSV по всем обработанным файлам; по умолчанию corpus_summary.csv.
+    --save-rows-dir PATH — папка для сохранения пер-файловых TSV (idx, label, score/conf, text).
+
+Пример:
+
+    python3 -m analytics.embeddings.scripts.calculate_sentiment \ --dir artifacts/techs/ \
+    --titles-kv artifacts/embeddings/words/mil.model/w2v_titles_300d.
+    model \ 
+    --comments-kv artifacts/embeddings/words/syn/w2v_titles_300d.model \
+    --out-csv artifacts/corpus3.csv --mode bootstrap
+
+Вывод:
+
+    Создаёт CSV-файл с результатами сентиментального анализа для каждой технологии.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — рассчет произведен успешно.
+    1 — ошибка (например, отсутствует модель).
+
+
 ### Скрипты для визуализации
 
 #### visualization.draw_relationship_map
@@ -628,4 +673,34 @@ Batch-обработка по 10,000 записей для экономии па
     0 — визуализация создана успешно.
     1 — ошибка.
 
-![Wordcloud](img/most_engaging_tech.png "Result")
+![IRR](img/most_engaging_tech.png "Result")
+
+#### visualization.draw_sentiment_plot
+
+Визуализирует чертеж, отражающий результат сентимент анализа.
+
+Аргументы:
+
+    -i, --input PATH — путь к итоговому CSV (например, corpus_summary.csv).
+    -o, --output PATH — путь к файлу csv; по умолчанию plots.
+    --sort-by COLUMN — колонка для сортировки (например, sentiment_index, polarity_ratio, mean_score); по умолчанию sentiment_index.
+    --desc — сортировать по убыванию.
+
+Пример:
+
+    python3 -m visualization.draw_sentiment_plot \
+    -i artifacts/corpus2.csv \
+    -o artifacts/plots/a.png
+
+Вывод:
+
+    Создаёт PNG-изображение с графиком.
+    Печатает путь к сохранённому файлу.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — визуализация создана успешно.
+    1 — ошибка.
+
+![Sentiment](img/sentiment.png "Result")
