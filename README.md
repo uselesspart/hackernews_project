@@ -12,15 +12,18 @@
     - [db.scripts.export_tech_names](#dbscriptsexport_tech_names)
     - [db.scripts.export_context](#dbscriptsexport_context)
     - [db.scripts.export_comments_for_techs](#dbscriptsexport_comments_for_techs)
+    - [db.scripts.export_stories_meta](#dbscriptsexport_stories_meta)
   - [Скрипты для выполнения анализа](#скрипты-для-выполнения-анализа)
     - [analytics.embeddings.scripts.classify_tech](#analyticsembeddingsscriptsclassify_tech)
     - [analytics.embeddings.scripts.build_rel_matrix](#analyticsembeddingsscriptsbuild_rel_matrix)
     - [analytics.embeddings.scripts.lemmatize_file](#analyticsembeddingsscriptslemmatize_file)
     - [analytics.embeddings.scripts.sentences_to_vectors](#analyticsembeddingsscriptssentences_to_vectors)
     - [analytics.embeddings.scripts.train_model](#analyticsembeddingsscriptstrain_model)
+    - [analytics.embeddings.scripts.calculate_irr](#analyticsembeddingsscriptscalculate_irr)
   - [Скрипты для визуализации](#скрипты-для-визуализации)
     - [visualization.draw_relationship_map](#visualizationdraw_relationship_map)
     - [visualization.draw_wordcloud](#visualizationdraw_wordcloud)
+    - [visualization.draw_irr_plot](#visualizationdraw_irr_plot)
 
 
 ## Установка зависимостей
@@ -266,7 +269,7 @@ Batch-обработка по 10,000 записей для экономии па
 Аргументы:
 
     -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
-    -o, --out PATH — путь к выходной папке (например, artifacts/comments/) [обязательный].
+    -o, --output PATH — путь к выходной папке (например, artifacts/comments/) [обязательный].
     -m, --minimum INT - минимальное число статей о технологии для выгрузки комментариев [обязательный].
 
 Примеры:
@@ -282,6 +285,29 @@ Batch-обработка по 10,000 записей для экономии па
 
     0 — выгрузка прошла успешно.
     1 — ошибка (например, недоступна БД, нет таблиц stories/comments).
+
+#### db.scripts.export_stories_meta
+
+Выгружает метаданные для каждой статьи из БД.
+
+Аргументы:
+
+    -d, --db DB_URL — строка подключения SQLAlchemy (например, sqlite:///hn.db) [обязательный].
+    -o, --output PATH — путь к выходному файлу. [обязательный].
+
+Примеры:
+
+    python3 -m db.scripts.export_comments_for_techs -d sqlite:///hn.db -o artifacts/meta.txt
+
+Вывод:
+
+    По завершении печатает путь к созданному файлу («Готово: экспорт данных в ...»).
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — выгрузка прошла успешно.
+    1 — ошибка (например, недоступна БД, нет таблиц stories/comments).     
 
 ### Скрипты для выполнения анализа
 
@@ -475,6 +501,33 @@ Batch-обработка по 10,000 записей для экономии па
 
 После обучения используйте model.wv.most_similar("token", topn=10) для поиска ближайших слов, и model.wv.similar_by_vector(vec) — для ближайших к произвольному вектору.
 
+#### analytics.embeddings.scripts.calculate_irr
+
+Рассчитывает IRR для каждой технологии по количеству комментариев к статьям про нее.
+
+Аргументы:
+
+    -i, --input PATH — файл с метаданными статей [обязательный].
+    -m, --model PATH — путь Word2Vec модели, обученной на заголовках (.model) [обязательный].
+    -o, --output PATH — путь к выходному CSV файлу с коэффициентами для технологий [обязательный].
+    
+Пример:
+
+    python3 -m analytics.embeddings.scripts.calculate_irr \
+    -p artifacts/meta.csv \
+    -m artifacts/w2v_titles_300d.model \
+    -o artifacts/coefs.csv
+
+Вывод:
+
+    Создаёт CSV-файл с коэффициентами для каждой технологии.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — рассчет произведен успешно.
+    1 — ошибка (например, отсутствует модель).
+
 ### Скрипты для визуализации
 
 #### visualization.draw_relationship_map
@@ -546,3 +599,33 @@ Batch-обработка по 10,000 записей для экономии па
     1 — ошибка.
 
 ![Wordcloud](img/wordcloud.png "Result")
+
+#### visualization.draw_irr_plot
+
+Визуализирует чертеж, отражающий влияние технологий на число комментариев.
+
+Аргументы:
+
+    -i, --input PATH - путь к входному файлу [обязательный].
+    -o, --output PATH - путь к выходному файлу [обязательный].
+
+Примеры:
+
+Построить карту отношений между технологиями
+
+    python3 -m visualization.draw_irr_plot \
+    -i artifacts/coefs.csv \
+    -o artifacts/irr.png \
+
+Вывод:
+
+    Создаёт PNG-изображение с графиком.
+    Печатает путь к сохранённому файлу.
+    При ошибке — текст ошибки.
+
+Коды возврата:
+
+    0 — визуализация создана успешно.
+    1 — ошибка.
+
+![Wordcloud](img/most_engaging_tech.png "Result")
