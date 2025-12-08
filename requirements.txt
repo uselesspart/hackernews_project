@@ -67,7 +67,7 @@ typer==0.19.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.2
-umap==0.1.1
+#umap==0.1.1
 umap-learn==0.5.9.post2
 urllib3==2.5.0
 vaderSentiment==3.3.2
