@@ -1,0 +1,425 @@
+Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+Collecting en_core_web_sm@ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85 (from -r requirements.txt (line 14))
+  Downloading https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl (12.8 MB)
+     ---------------------------------------- 12.8/12.8 MB 1.5 MB/s  0:00:09
+Collecting adjustText==1.3.0 (from -r requirements.txt (line 1))
+  Obtaining dependency information for adjustText==1.3.0 from https://files.pythonhosted.org/packages/53/1c/8feedd607cc14c5df9aef74fe3af9a99bf660743b842a9b5b1865326b4aa/adjustText-1.3.0-py3-none-any.whl.metadata
+  Using cached adjustText-1.3.0-py3-none-any.whl.metadata (3.1 kB)
+Collecting annotated-types==0.7.0 (from -r requirements.txt (line 2))
+  Obtaining dependency information for annotated-types==0.7.0 from https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl.metadata
+  Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+  Link requires a different Python (3.13.7 not in: '<3.13,>=3.6'): https://files.pythonhosted.org/packages/e5/69/d4829c5b5cd244e6140a0754a0f73cc725c6e138f609b4c5d1982e699906/blis-1.2.0.tar.gz (from https://pypi.org/simple/blis/) (requires-python:<3.13,>=3.6)
+  Link requires a different Python (3.13.7 not in: '<3.13,>=3.6'): https://files.pythonhosted.org/packages/61/aa/0743c994884de83472c854bb534c9edab8d711e1880d4fa194e6d876bb60/blis-1.2.1.tar.gz (from https://pypi.org/simple/blis/) (requires-python:<3.13,>=3.6)
+Collecting blis==0.7.11 (from -r requirements.txt (line 3))
+  Using cached blis-0.7.11.tar.gz (2.9 MB)
+  Installing build dependencies: started
+  Running command installing build dependencies for blis
+  Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+  Ignoring numpy: markers 'python_version < "3.9"' don't match your environment
+  Collecting setuptools
+    Obtaining dependency information for setuptools from https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl.metadata
+    Using cached setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+  Collecting cython<3.0,>=0.25
+    Obtaining dependency information for cython<3.0,>=0.25 from https://files.pythonhosted.org/packages/7e/26/9d8de10005fedb1eceabe713348d43bae1dbab1786042ca0751a2e2b0f8c/Cython-0.29.37-py2.py3-none-any.whl.metadata
+    Using cached Cython-0.29.37-py2.py3-none-any.whl.metadata (3.1 kB)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/3a/be/650f9c091ef71cb01d735775d554e068752d3ff63d7943b26316dc401749/numpy-1.21.2.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/5f/d6/ad58ded26556eaeaa8c971e08b6466f17c4ac4d786cd3d800e26ce59cc01/numpy-1.21.3.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/fb/48/b0708ebd7718a8933f0d3937513ef8ef2f4f04529f1f66ca86d873043921/numpy-1.21.4.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/c2/a8/a924a09492bdfee8c2ec3094d0a13f2799800b4fdc9c890738aeeb12c72e/numpy-1.21.5.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/45/b7/de7b8e67f2232c26af57c205aaad29fe17754f793404f59c8a730c7a191a/numpy-1.21.6.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/55/b3/b13bce39ba82b7398c06d10446f5ffd5c07db39b09bd37370dc720c7951c/numpy-1.26.0.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+    Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/78/23/f78fd8311e0f710fe1d065d50b92ce0057fe877b8ed7fd41b28ad6865bfc/numpy-1.26.1.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+  Collecting numpy>=1.25.0
+    Obtaining dependency information for numpy>=1.25.0 from https://files.pythonhosted.org/packages/0c/88/e2eaa6cffb115b85ed7c7c87775cb8bcf0816816bc98ca8dbfa2ee33fe6e/numpy-2.3.5-cp313-cp313-win_amd64.whl.metadata
+    Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl.metadata (60 kB)
+  Using cached Cython-0.29.37-py2.py3-none-any.whl (989 kB)
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+  Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl (12.8 MB)
+  Installing collected packages: setuptools, numpy, cython
+    Creating C:\Users\MSI\AppData\Local\Temp\pip-build-env-m8bfjgir\overlay\Scripts
+
+  Successfully installed cython-0.29.37 numpy-2.3.5 setuptools-80.9.0
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  BLIS_COMPILER? None
+  Compiling blis\cy.pyx because it changed.
+  Compiling blis\py.pyx because it changed.
+  [1/2] Cythonizing blis\cy.pyx
+  [2/2] Cythonizing blis\py.pyx
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  BLIS_COMPILER? None
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-m8bfjgir\overlay\Lib\site-packages\setuptools\dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: BSD License
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  running dist_info
+  creating C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info
+  writing C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\PKG-INFO
+  writing dependency_links to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\dependency_links.txt
+  writing requirements to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\requires.txt
+  writing top-level names to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\top_level.txt
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\SOURCES.txt'
+  reading manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  adding license file 'LICENSE'
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis.egg-info\SOURCES.txt'
+  creating 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-sfcnrtxr\blis-0.7.11.dist-info'
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting catalogue==2.0.10 (from -r requirements.txt (line 4))
+  Obtaining dependency information for catalogue==2.0.10 from https://files.pythonhosted.org/packages/9e/96/d32b941a501ab566a16358d68b6eb4e4acc373fab3c3c4d7d9e649f7b4bb/catalogue-2.0.10-py3-none-any.whl.metadata
+  Using cached catalogue-2.0.10-py3-none-any.whl.metadata (14 kB)
+Collecting certifi==2025.10.5 (from -r requirements.txt (line 5))
+  Obtaining dependency information for certifi==2025.10.5 from https://files.pythonhosted.org/packages/e4/37/af0d2ef3967ac0d6113837b44a4f0bfe1328c2b9763bd5b1744520e5cfed/certifi-2025.10.5-py3-none-any.whl.metadata
+  Using cached certifi-2025.10.5-py3-none-any.whl.metadata (2.5 kB)
+Collecting charset-normalizer==3.4.3 (from -r requirements.txt (line 6))
+  Obtaining dependency information for charset-normalizer==3.4.3 from https://files.pythonhosted.org/packages/9a/8f/ae790790c7b64f925e5c953b924aaa42a243fb778fed9e41f147b2a5715a/charset_normalizer-3.4.3-cp313-cp313-win_amd64.whl.metadata
+  Using cached charset_normalizer-3.4.3-cp313-cp313-win_amd64.whl.metadata (37 kB)
+Collecting click==8.3.0 (from -r requirements.txt (line 7))
+  Obtaining dependency information for click==8.3.0 from https://files.pythonhosted.org/packages/db/d3/9dcc0f5797f070ec8edf30fbadfb200e71d9db6b84d211e3b2085a7589a0/click-8.3.0-py3-none-any.whl.metadata
+  Using cached click-8.3.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting cloudpathlib==0.23.0 (from -r requirements.txt (line 8))
+  Obtaining dependency information for cloudpathlib==0.23.0 from https://files.pythonhosted.org/packages/ae/8a/c4bb04426d608be4a3171efa2e233d2c59a5c8937850c10d098e126df18e/cloudpathlib-0.23.0-py3-none-any.whl.metadata
+  Using cached cloudpathlib-0.23.0-py3-none-any.whl.metadata (16 kB)
+Collecting confection==0.1.5 (from -r requirements.txt (line 9))
+  Obtaining dependency information for confection==0.1.5 from https://files.pythonhosted.org/packages/0c/00/3106b1854b45bd0474ced037dfe6b73b90fe68a68968cef47c23de3d43d2/confection-0.1.5-py3-none-any.whl.metadata
+  Using cached confection-0.1.5-py3-none-any.whl.metadata (19 kB)
+Collecting contourpy==1.3.3 (from -r requirements.txt (line 10))
+  Obtaining dependency information for contourpy==1.3.3 from https://files.pythonhosted.org/packages/18/0b/0098c214843213759692cc638fce7de5c289200a830e5035d1791d7a2338/contourpy-1.3.3-cp313-cp313-win_amd64.whl.metadata
+  Using cached contourpy-1.3.3-cp313-cp313-win_amd64.whl.metadata (5.5 kB)
+Collecting cramjam==2.11.0 (from -r requirements.txt (line 11))
+  Obtaining dependency information for cramjam==2.11.0 from https://files.pythonhosted.org/packages/37/05/47b5e0bf7c41a3b1cdd3b7c2147f880c93226a6bef1f5d85183040cbdece/cramjam-2.11.0-cp313-cp313-win_amd64.whl.metadata
+  Using cached cramjam-2.11.0-cp313-cp313-win_amd64.whl.metadata (681 bytes)
+Collecting cycler==0.12.1 (from -r requirements.txt (line 12))
+  Obtaining dependency information for cycler==0.12.1 from https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl.metadata
+  Using cached cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting cymem==2.0.11 (from -r requirements.txt (line 13))
+  Obtaining dependency information for cymem==2.0.11 from https://files.pythonhosted.org/packages/74/65/c162fbac63e867a055240b6600b92ef96c0eb7a1895312ac53c4be93d056/cymem-2.0.11-cp313-cp313-win_amd64.whl.metadata
+  Using cached cymem-2.0.11-cp313-cp313-win_amd64.whl.metadata (8.8 kB)
+Collecting flashtext==2.7 (from -r requirements.txt (line 15))
+  Using cached flashtext-2.7.tar.gz (14 kB)
+  Installing build dependencies: started
+  Running command installing build dependencies for flashtext
+  Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+  Collecting setuptools>=40.8.0
+    Obtaining dependency information for setuptools>=40.8.0 from https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl.metadata
+    Using cached setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+  Installing collected packages: setuptools
+  Successfully installed setuptools-80.9.0
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-o53veui3\overlay\Lib\site-packages\setuptools\dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: MIT License
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  WARNING: sphinx not available, not building docs
+  running egg_info
+  writing flashtext.egg-info\PKG-INFO
+  writing dependency_links to flashtext.egg-info\dependency_links.txt
+  writing top-level names to flashtext.egg-info\top_level.txt
+  reading manifest file 'flashtext.egg-info\SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  adding license file 'LICENSE'
+  writing manifest file 'flashtext.egg-info\SOURCES.txt'
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-o53veui3\overlay\Lib\site-packages\setuptools\dist.py:759: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: MIT License
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  WARNING: sphinx not available, not building docs
+  running dist_info
+  creating C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info
+  writing C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\PKG-INFO
+  writing dependency_links to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\dependency_links.txt
+  writing top-level names to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\top_level.txt
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\SOURCES.txt'
+  reading manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  adding license file 'LICENSE'
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext.egg-info\SOURCES.txt'
+  creating 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-2370gti9\flashtext-2.7.dist-info'
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-o53veui3\overlay\Lib\site-packages\setuptools\_distutils\cmd.py:135: SetuptoolsDeprecationWarning: bdist_wheel.universal is deprecated
+  !!
+
+          ********************************************************************************
+          With Python 2.7 end-of-life, support for building universal wheels
+          (i.e., wheels that support both Python 2 and Python 3)
+          is being obviated.
+          Please discontinue using this option, or if you still need it,
+          file an issue with pypa/setuptools describing your use case.
+
+          This deprecation is overdue, please update your project and remove deprecated
+          calls to avoid build errors in the future.
+          ********************************************************************************
+
+  !!
+    self.finalize_options()
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting fonttools==4.60.1 (from -r requirements.txt (line 16))
+  Obtaining dependency information for fonttools==4.60.1 from https://files.pythonhosted.org/packages/75/4d/b022c1577807ce8b31ffe055306ec13a866f2337ecee96e75b24b9b753ea/fonttools-4.60.1-cp313-cp313-win_amd64.whl.metadata
+  Using cached fonttools-4.60.1-cp313-cp313-win_amd64.whl.metadata (114 kB)
+Collecting fsspec==2025.9.0 (from -r requirements.txt (line 17))
+  Obtaining dependency information for fsspec==2025.9.0 from https://files.pythonhosted.org/packages/47/71/70db47e4f6ce3e5c37a607355f80da8860a33226be640226ac52cb05ef2e/fsspec-2025.9.0-py3-none-any.whl.metadata
+  Using cached fsspec-2025.9.0-py3-none-any.whl.metadata (10 kB)
+Collecting gensim==4.3.3 (from -r requirements.txt (line 18))
+  Using cached gensim-4.3.3.tar.gz (23.3 MB)
+  Installing build dependencies: started
+  Running command installing build dependencies for gensim
+  Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+  Ignoring numpy: markers 'python_version == "3.8" and platform_machine not in "arm64|aarch64"' don't match your environment
+  Collecting Cython<3.0.0,>=0.29.32
+    Obtaining dependency information for Cython<3.0.0,>=0.29.32 from https://files.pythonhosted.org/packages/7e/26/9d8de10005fedb1eceabe713348d43bae1dbab1786042ca0751a2e2b0f8c/Cython-0.29.37-py2.py3-none-any.whl.metadata
+    Using cached Cython-0.29.37-py2.py3-none-any.whl.metadata (3.1 kB)
+  Collecting oldest-supported-numpy
+    Obtaining dependency information for oldest-supported-numpy from https://files.pythonhosted.org/packages/dc/5c/e3c84cfdd488701aa074b22cf5bd227fb15d26e1d55a66d9088c39afa123/oldest_supported_numpy-2023.12.21-py3-none-any.whl.metadata
+    Using cached oldest_supported_numpy-2023.12.21-py3-none-any.whl.metadata (9.8 kB)
+  Collecting setuptools
+    Obtaining dependency information for setuptools from https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl.metadata
+    Using cached setuptools-80.9.0-py3-none-any.whl.metadata (6.6 kB)
+  Collecting wheel
+    Obtaining dependency information for wheel from https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl.metadata
+    Using cached wheel-0.45.1-py3-none-any.whl.metadata (2.3 kB)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/3a/be/650f9c091ef71cb01d735775d554e068752d3ff63d7943b26316dc401749/numpy-1.21.2.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/5f/d6/ad58ded26556eaeaa8c971e08b6466f17c4ac4d786cd3d800e26ce59cc01/numpy-1.21.3.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/fb/48/b0708ebd7718a8933f0d3937513ef8ef2f4f04529f1f66ca86d873043921/numpy-1.21.4.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/c2/a8/a924a09492bdfee8c2ec3094d0a13f2799800b4fdc9c890738aeeb12c72e/numpy-1.21.5.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/45/b7/de7b8e67f2232c26af57c205aaad29fe17754f793404f59c8a730c7a191a/numpy-1.21.6.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+    Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/55/b3/b13bce39ba82b7398c06d10446f5ffd5c07db39b09bd37370dc720c7951c/numpy-1.26.0.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+    Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/78/23/f78fd8311e0f710fe1d065d50b92ce0057fe877b8ed7fd41b28ad6865bfc/numpy-1.26.1.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+  Collecting numpy (from oldest-supported-numpy)
+    Obtaining dependency information for numpy from https://files.pythonhosted.org/packages/0c/88/e2eaa6cffb115b85ed7c7c87775cb8bcf0816816bc98ca8dbfa2ee33fe6e/numpy-2.3.5-cp313-cp313-win_amd64.whl.metadata
+    Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl.metadata (60 kB)
+  Using cached Cython-0.29.37-py2.py3-none-any.whl (989 kB)
+  Using cached oldest_supported_numpy-2023.12.21-py3-none-any.whl (4.9 kB)
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+  Using cached wheel-0.45.1-py3-none-any.whl (72 kB)
+  Using cached numpy-2.3.5-cp313-cp313-win_amd64.whl (12.8 MB)
+  Installing collected packages: wheel, setuptools, numpy, Cython, oldest-supported-numpy
+    Creating C:\Users\MSI\AppData\Local\Temp\pip-build-env-6zab71zu\overlay\Scripts
+
+  Successfully installed Cython-0.29.37 numpy-2.3.5 oldest-supported-numpy-2023.12.21 setuptools-80.9.0 wheel-0.45.1
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-6zab71zu\overlay\Lib\site-packages\setuptools\_distutils\dist.py:289: UserWarning: Unknown distribution option: 'test_suite'
+    warnings.warn(msg)
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-6zab71zu\overlay\Lib\site-packages\setuptools\_distutils\dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+    warnings.warn(msg)
+  running egg_info
+  writing gensim.egg-info\PKG-INFO
+  writing dependency_links to gensim.egg-info\dependency_links.txt
+  writing requirements to gensim.egg-info\requires.txt
+  writing top-level names to gensim.egg-info\top_level.txt
+  reading manifest file 'gensim.egg-info\SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  adding license file 'COPYING'
+  writing manifest file 'gensim.egg-info\SOURCES.txt'
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-6zab71zu\overlay\Lib\site-packages\setuptools\_distutils\dist.py:289: UserWarning: Unknown distribution option: 'test_suite'
+    warnings.warn(msg)
+  C:\Users\MSI\AppData\Local\Temp\pip-build-env-6zab71zu\overlay\Lib\site-packages\setuptools\_distutils\dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
+    warnings.warn(msg)
+  running dist_info
+  creating C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info
+  writing C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\PKG-INFO
+  writing dependency_links to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\dependency_links.txt
+  writing requirements to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\requires.txt
+  writing top-level names to C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\top_level.txt
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\SOURCES.txt'
+  reading manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  adding license file 'COPYING'
+  writing manifest file 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim.egg-info\SOURCES.txt'
+  creating 'C:\Users\MSI\AppData\Local\Temp\pip-modern-metadata-q2s11pdv\gensim-4.3.3.dist-info'
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Collecting greenlet==3.2.4 (from -r requirements.txt (line 19))
+  Obtaining dependency information for greenlet==3.2.4 from https://files.pythonhosted.org/packages/0b/55/2321e43595e6801e105fcfdee02b34c0f996eb71e6ddffca6b10b7e1d771/greenlet-3.2.4-cp313-cp313-win_amd64.whl.metadata
+  Using cached greenlet-3.2.4-cp313-cp313-win_amd64.whl.metadata (4.2 kB)
+Collecting idna==3.10 (from -r requirements.txt (line 20))
+  Obtaining dependency information for idna==3.10 from https://files.pythonhosted.org/packages/76/c6/c88e154df9c4e1a2a66ccf0005a88dfb2650c1dffb6f5ce603dfbd452ce3/idna-3.10-py3-none-any.whl.metadata
+  Using cached idna-3.10-py3-none-any.whl.metadata (10 kB)
+Collecting Jinja2==3.1.6 (from -r requirements.txt (line 21))
+  Obtaining dependency information for Jinja2==3.1.6 from https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl.metadata
+  Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting joblib==1.5.2 (from -r requirements.txt (line 22))
+  Obtaining dependency information for joblib==1.5.2 from https://files.pythonhosted.org/packages/1e/e8/685f47e0d754320684db4425a0967f7d3fa70126bffd76110b7009a0090f/joblib-1.5.2-py3-none-any.whl.metadata
+  Using cached joblib-1.5.2-py3-none-any.whl.metadata (5.6 kB)
+Collecting kiwisolver==1.4.9 (from -r requirements.txt (line 23))
+  Obtaining dependency information for kiwisolver==1.4.9 from https://files.pythonhosted.org/packages/75/bd/f1a5d894000941739f2ae1b65a32892349423ad49c2e6d0771d0bad3fae4/kiwisolver-1.4.9-cp313-cp313-win_amd64.whl.metadata
+  Using cached kiwisolver-1.4.9-cp313-cp313-win_amd64.whl.metadata (6.4 kB)
+Collecting langcodes==3.5.0 (from -r requirements.txt (line 24))
+  Obtaining dependency information for langcodes==3.5.0 from https://files.pythonhosted.org/packages/c3/6b/068c2ea7a712bf805c62445bd9e9c06d7340358ef2824150eceac027444b/langcodes-3.5.0-py3-none-any.whl.metadata
+  Using cached langcodes-3.5.0-py3-none-any.whl.metadata (29 kB)
+Collecting language_data==1.3.0 (from -r requirements.txt (line 25))
+  Obtaining dependency information for language_data==1.3.0 from https://files.pythonhosted.org/packages/5d/e9/5a5ffd9b286db82be70d677d0a91e4d58f7912bb8dd026ddeeb4abe70679/language_data-1.3.0-py3-none-any.whl.metadata
+  Using cached language_data-1.3.0-py3-none-any.whl.metadata (4.3 kB)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/19/66/6b2c49c7c68da48d17059882fdb9ad9ac9e5ac3f22b00874d7996e3c44a8/llvmlite-0.36.0.tar.gz (from https://pypi.org/simple/llvmlite/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.10'): https://files.pythonhosted.org/packages/55/21/f7df5d35f3f5d0637d64a89f6b0461f2adf78e22916d6372486f8fc2193d/llvmlite-0.37.0.tar.gz (from https://pypi.org/simple/llvmlite/) (requires-python:>=3.7,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/d8/e3/bd329a96549809598acd5daaccd35fd9d0883185cfe7f681a9e3e54beaa0/llvmlite-0.38.0.tar.gz (from https://pypi.org/simple/llvmlite/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/90/fc/313c916fb49495ac7c1f9ab213cd3d3285342691b860a2810a51c6c1a10e/llvmlite-0.38.1.tar.gz (from https://pypi.org/simple/llvmlite/) (requires-python:>=3.7,<3.11)
+Collecting llvmlite==0.45.1 (from -r requirements.txt (line 26))
+  Obtaining dependency information for llvmlite==0.45.1 from https://files.pythonhosted.org/packages/09/56/ed35668130e32dbfad2eb37356793b0a95f23494ab5be7d9bf5cb75850ee/llvmlite-0.45.1-cp313-cp313-win_amd64.whl.metadata
+  Using cached llvmlite-0.45.1-cp313-cp313-win_amd64.whl.metadata (5.0 kB)
+Collecting marisa-trie==1.3.1 (from -r requirements.txt (line 27))
+  Obtaining dependency information for marisa-trie==1.3.1 from https://files.pythonhosted.org/packages/3b/ce/ddfab303646b21aef07ff9dbc83fba92e5d493f49d3bc03d899ffd45c86f/marisa_trie-1.3.1-cp313-cp313-win_amd64.whl.metadata
+  Using cached marisa_trie-1.3.1-cp313-cp313-win_amd64.whl.metadata (10 kB)
+Collecting markdown-it-py==4.0.0 (from -r requirements.txt (line 28))
+  Obtaining dependency information for markdown-it-py==4.0.0 from https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl.metadata
+  Using cached markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+Collecting MarkupSafe==3.0.3 (from -r requirements.txt (line 29))
+  Obtaining dependency information for MarkupSafe==3.0.3 from https://files.pythonhosted.org/packages/05/73/c4abe620b841b6b791f2edc248f556900667a5a1cf023a6646967ae98335/markupsafe-3.0.3-cp313-cp313-win_amd64.whl.metadata
+  Using cached markupsafe-3.0.3-cp313-cp313-win_amd64.whl.metadata (2.8 kB)
+Collecting matplotlib==3.10.7 (from -r requirements.txt (line 30))
+  Obtaining dependency information for matplotlib==3.10.7 from https://files.pythonhosted.org/packages/e1/b6/23064a96308b9aeceeffa65e96bcde459a2ea4934d311dee20afde7407a0/matplotlib-3.10.7-cp313-cp313-win_amd64.whl.metadata
+  Using cached matplotlib-3.10.7-cp313-cp313-win_amd64.whl.metadata (11 kB)
+Collecting mdurl==0.1.2 (from -r requirements.txt (line 31))
+  Obtaining dependency information for mdurl==0.1.2 from https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl.metadata
+  Using cached mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+Collecting murmurhash==1.0.13 (from -r requirements.txt (line 32))
+  Obtaining dependency information for murmurhash==1.0.13 from https://files.pythonhosted.org/packages/18/25/addbc1d28f83252732ac3e57334d42f093890b4c2cce483ba01a42bc607c/murmurhash-1.0.13-cp313-cp313-win_amd64.whl.metadata
+  Using cached murmurhash-1.0.13-cp313-cp313-win_amd64.whl.metadata (2.2 kB)
+Collecting networkx==3.5 (from -r requirements.txt (line 33))
+  Obtaining dependency information for networkx==3.5 from https://files.pythonhosted.org/packages/eb/8d/776adee7bbf76365fdd7f2552710282c79a4ead5d2a46408c9043a2b70ba/networkx-3.5-py3-none-any.whl.metadata
+  Using cached networkx-3.5-py3-none-any.whl.metadata (6.3 kB)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.9'): https://files.pythonhosted.org/packages/d1/68/d872f91bcb57c00c54835beb950a9d9ceb99e497f167fa333e8eba968ecc/numba-0.52.0rc3.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.9)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.9'): https://files.pythonhosted.org/packages/46/e1/cbbc7c7967d9b10e54c852bf5bece0222a63bfb809d3354014c957ef1bda/numba-0.52.0.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.9)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/c8/e6/681c43623f362d6c504eb29944184c0df6357be10ed2fad6071fd1b7e143/numba-0.53.0rc1.post1.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/d4/b2/d6e507259f4630b319811b57c2bb3364d2737ae297a972a055cf40df36a5/numba-0.53.0rc2.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/5e/ef/d761365ea63f28b85574069e953664e9fe218d50b85b3f84849ebecf953c/numba-0.53.0rc3.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/b0/6d/bb1204879726d6db6dc92de995bdbd64792369f0be3f8a36710cc2d93f78/numba-0.53.0.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.6,<3.10'): https://files.pythonhosted.org/packages/e3/7d/3d61160836e49f40913741c464f119551c15ed371c1d91ea50308495b93b/numba-0.53.1.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.6,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.10'): https://files.pythonhosted.org/packages/f2/76/00e4f3443c093f6064044357b8f07abde5ed7a15d6c43988a68c184b62a5/numba-0.54.0rc2.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.10'): https://files.pythonhosted.org/packages/ec/74/f6ff055664ac01adac37ad8f5ab5c94d75badfd264fdab209e0f5f1fafef/numba-0.54.0rc3.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.10'): https://files.pythonhosted.org/packages/24/66/4720b6f70b42c74f10296a9803f8ba28c284f55cee6839f457bc67588277/numba-0.54.0.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.10'): https://files.pythonhosted.org/packages/d3/93/05c88fc9f17655a93428f49646d1086c8b2b98e8531033f13f3fe464fae5/numba-0.54.1.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.10)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/05/d9/5a3bc6549fe7ea8336f06cd72dac0ad69b18c8089930e560467cf9de359d/numba-0.55.0rc1.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/cf/e2/8213c08fc9392c99b37de9823119a83576469354154eb08ad653b6ab5213/numba-0.55.0.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/69/df/bd36068b2c1d0d34794f8ac0c222f9c4ad88dc710b400e65dbb3b59ea57e/numba-0.55.1.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/39/dd/7109030bb584e8f0c4c8796bfd39fc5811cb77368a8c5db335f99c1fec9e/numba-0.55.2.tar.gz (from https://pypi.org/simple/numba/) (requires-python:>=3.7,<3.11)
+Collecting numba==0.62.1 (from -r requirements.txt (line 34))
+  Obtaining dependency information for numba==0.62.1 from https://files.pythonhosted.org/packages/9c/ec/9d414e7a80d6d1dc4af0e07c6bfe293ce0b04ea4d0ed6c45dad9bd6e72eb/numba-0.62.1-cp313-cp313-win_amd64.whl.metadata
+  Using cached numba-0.62.1-cp313-cp313-win_amd64.whl.metadata (2.9 kB)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/3a/be/650f9c091ef71cb01d735775d554e068752d3ff63d7943b26316dc401749/numpy-1.21.2.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/5f/d6/ad58ded26556eaeaa8c971e08b6466f17c4ac4d786cd3d800e26ce59cc01/numpy-1.21.3.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/fb/48/b0708ebd7718a8933f0d3937513ef8ef2f4f04529f1f66ca86d873043921/numpy-1.21.4.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/c2/a8/a924a09492bdfee8c2ec3094d0a13f2799800b4fdc9c890738aeeb12c72e/numpy-1.21.5.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '>=3.7,<3.11'): https://files.pythonhosted.org/packages/45/b7/de7b8e67f2232c26af57c205aaad29fe17754f793404f59c8a730c7a191a/numpy-1.21.6.zip (from https://pypi.org/simple/numpy/) (requires-python:>=3.7,<3.11)
+  Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/55/b3/b13bce39ba82b7398c06d10446f5ffd5c07db39b09bd37370dc720c7951c/numpy-1.26.0.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+  Link requires a different Python (3.13.7 not in: '<3.13,>=3.9'): https://files.pythonhosted.org/packages/78/23/f78fd8311e0f710fe1d065d50b92ce0057fe877b8ed7fd41b28ad6865bfc/numpy-1.26.1.tar.gz (from https://pypi.org/simple/numpy/) (requires-python:<3.13,>=3.9)
+Collecting numpy==1.26.4 (from -r requirements.txt (line 35))
+  Using cached numpy-1.26.4.tar.gz (15.8 MB)
+  Installing build dependencies: started
+  Running command installing build dependencies for numpy
+  Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+  Collecting Cython<3.1,>=0.29.34
+    Obtaining dependency information for Cython<3.1,>=0.29.34 from https://files.pythonhosted.org/packages/a6/5f/bbfaf2b5f7bf78854ecbc82f8473a3892ae5580e0c5bd0d4a82580b39ed3/Cython-3.0.12-cp313-cp313-win_amd64.whl.metadata
+    Using cached Cython-3.0.12-cp313-cp313-win_amd64.whl.metadata (3.6 kB)
+  Collecting meson-python<0.16.0,>=0.15.0
+    Obtaining dependency information for meson-python<0.16.0,>=0.15.0 from https://files.pythonhosted.org/packages/1f/60/b10b11ab470a690d5777310d6cfd1c9bdbbb0a1313a78c34a1e82e0b9d27/meson_python-0.15.0-py3-none-any.whl.metadata
+    Using cached meson_python-0.15.0-py3-none-any.whl.metadata (4.1 kB)
+  Collecting colorama (from meson-python<0.16.0,>=0.15.0)
+    Obtaining dependency information for colorama from https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl.metadata
+    Using cached colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+  Collecting meson>=1.2.3 (from meson-python<0.16.0,>=0.15.0)
+    Obtaining dependency information for meson>=1.2.3 from https://files.pythonhosted.org/packages/32/4f/c398c6f06ece1c6c246e008d5dac3824c98f54d3eb3d8014f4910afd6d48/meson-1.10.0-py3-none-any.whl.metadata
+    Using cached meson-1.10.0-py3-none-any.whl.metadata (1.8 kB)
+  Collecting pyproject-metadata>=0.7.1 (from meson-python<0.16.0,>=0.15.0)
+    Obtaining dependency information for pyproject-metadata>=0.7.1 from https://files.pythonhosted.org/packages/c0/57/e69a1de45ec7a99a707e9f1a5defa035a48de0cae2d8582451c72d2db456/pyproject_metadata-0.10.0-py3-none-any.whl.metadata
+    Using cached pyproject_metadata-0.10.0-py3-none-any.whl.metadata (6.3 kB)
+  Collecting packaging>=23.2 (from pyproject-metadata>=0.7.1->meson-python<0.16.0,>=0.15.0)
+    Obtaining dependency information for packaging>=23.2 from https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl.metadata
+    Using cached packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+  Using cached Cython-3.0.12-cp313-cp313-win_amd64.whl (2.8 MB)
+  Using cached meson_python-0.15.0-py3-none-any.whl (25 kB)
+  Using cached meson-1.10.0-py3-none-any.whl (1.1 MB)
+  Using cached pyproject_metadata-0.10.0-py3-none-any.whl (19 kB)
+  Using cached packaging-25.0-py3-none-any.whl (66 kB)
+  Using cached colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+  Installing collected packages: packaging, meson, Cython, colorama, pyproject-metadata, meson-python
+    Creating C:\Users\MSI\AppData\Local\Temp\pip-build-env-z5to67p6\overlay\Scripts
+
+  Successfully installed Cython-3.0.12 colorama-0.4.6 meson-1.10.0 meson-python-0.15.0 packaging-25.0 pyproject-metadata-0.10.0
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  Getting requirements to build wheel: finished with status 'done'
+  Installing backend dependencies: started
+  Running command installing backend dependencies for numpy
+  Using pip 25.3 from C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip (python 3.13)
+  Collecting ninja>=1.8.2
+    Obtaining dependency information for ninja>=1.8.2 from https://files.pythonhosted.org/packages/29/45/c0adfbfb0b5895aa18cec400c535b4f7ff3e52536e0403602fc1a23f7de9/ninja-1.13.0-py3-none-win_amd64.whl.metadata
+    Using cached ninja-1.13.0-py3-none-win_amd64.whl.metadata (5.1 kB)
+  Using cached ninja-1.13.0-py3-none-win_amd64.whl (309 kB)
+  Installing collected packages: ninja
+  Successfully installed ninja-1.13.0
+  Installing backend dependencies: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Running command Preparing metadata (pyproject.toml)
+  + C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Scripts\python.exe C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288\vendored-meson\meson\meson.py setup C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288 C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288\.mesonpy-9wgn582a -Dbuildtype=release -Db_ndebug=if-release -Db_vscrt=md --native-file=C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288\.mesonpy-9wgn582a\meson-python-native-file.ini
+  Не удается найти указанный файл.
+  The Meson build system
+  Version: 1.2.99
+  Source dir: C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288
+  Build dir: C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288\.mesonpy-9wgn582a
+  Build type: native build
+  Project name: NumPy
+  Project version: 1.26.4
+  Activating VS 17.14.16
+
+  ..\meson.build:1:0: ERROR: Compiler cl cannot compile programs.
+
+  A full log can be found at C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288\.mesonpy-9wgn582a\meson-logs\meson-log.txt
+  error: subprocess-exited-with-error
+  
+  Preparing metadata (pyproject.toml) did not run successfully.
+  exit code: 1
+  
+  No available output.
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  full command: 'C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Scripts\python.exe' 'C:\Users\MSI\Desktop\Dev\hackernews_project\.venv\Lib\site-packages\pip\_vendor\pyproject_hooks\_in_process\_in_process.py' prepare_metadata_for_build_wheel 'C:\Users\MSI\AppData\Local\Temp\tmp4p2vmlae'
+  cwd: C:\Users\MSI\AppData\Local\Temp\pip-install-je13u2j4\numpy_7845fde64eaf48d4b7e7a7ff7cd92288
+  Preparing metadata (pyproject.toml): finished with status 'error'
+error: metadata-generation-failed
+
+Encountered error while generating package metadata.
+
+numpy
+
+note: This is an issue with the package mentioned above, not pip.
+hint: See above for details.
