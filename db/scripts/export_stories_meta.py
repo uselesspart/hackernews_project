@@ -57,7 +57,6 @@ def main() -> int:
                     }
                     for row in rows
                 ]
-                print(result)
                 writer = csv.writer(f)
                 writer.writerow(fieldnames)
                 for r in result:

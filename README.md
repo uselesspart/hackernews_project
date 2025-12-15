@@ -299,7 +299,7 @@ Batch-обработка по 10,000 записей для экономии па
 
 Примеры:
 
-    python3 -m db.scripts.export_comments_for_techs -d sqlite:///hn.db -o artifacts/meta.txt
+    python3 -m db.scripts.export_stories_meta -d sqlite:///hn.db -o artifacts/meta.csv
 
 Вывод:
 
@@ -516,7 +516,7 @@ Batch-обработка по 10,000 записей для экономии па
 Пример:
 
     python3 -m analytics.embeddings.scripts.calculate_irr \
-    -p artifacts/meta.csv \
+    -i artifacts/meta.csv \
     -m artifacts/w2v_titles_300d.model \
     -o artifacts/coefs.csv
 

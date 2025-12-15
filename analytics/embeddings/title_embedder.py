@@ -35,7 +35,7 @@ class TitleEmbedder:
     def sentences_to_vectors(self, path: str | Path) -> None:
         save_token_matrix_jsonl_gz(
             path,
-            out_path="artifacts/embeddings/words/titles.tokens3.jsonl.gz",
+            out_path="artifacts/embeddings/words/titles.tokens5.jsonl.gz",
             keep_punct=False,
             num_token="<NUM>",
             lower=True,
