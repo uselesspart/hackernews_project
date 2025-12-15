@@ -3,3 +3,5 @@ raw_data/
 __pycache__/
 *.db
 artifacts/
+bases/
+dataset.jsonl.gz

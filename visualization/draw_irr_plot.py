@@ -17,8 +17,16 @@ def main() -> int:
     try:
         args = parse_args()
         coef_df = pd.read_csv(args.input, encoding='utf-8')
-        coef_df = coef_df[coef_df['feature'] != 'const']
-        single = coef_df[coef_df['feature'].str.match(r'^has_[^_]+$')].copy()
+        coef_df = coef_df[coef_df['feature'] != 'const'].copy()
+
+        # Было:
+        # single = coef_df[coef_df['feature'].str.match(r'^has_[^_]+$')].copy()
+
+        # Стало: все фичи, начинающиеся с has_, но не has_pair_
+        mask_has = coef_df['feature'].str.startswith('has_', na=False)
+        mask_pair = coef_df['feature'].str.startswith('has_pair_', na=False)
+        single = coef_df[mask_has & ~mask_pair].copy()
+
         single['sig'] = (single['IRR_low'] > 1) | (single['IRR_high'] < 1)
         plot_df = single.sort_values('IRR', ascending=False).head(20).sort_values('IRR')
 
