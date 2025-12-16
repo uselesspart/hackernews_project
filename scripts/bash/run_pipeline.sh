@@ -61,13 +61,6 @@ install_python() {
         "arch")
             sudo pacman -Sy --noconfirm python
             ;;
-        "macos")
-            if ! command -v brew >/dev/null 2>&1; then
-                echo "Устанавливаем Homebrew..."
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            fi
-            brew install python@3.12
-            ;;
     esac
 }
 
@@ -140,5 +133,7 @@ python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$MODE
 
 echo "14) Визуализации карты близости (visualization.draw_relationship_map)..."
 python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
+
+echo "15) Экспортируем комментарии технологий по отдельности"
 
 echo "Pipeline finished successfully."
