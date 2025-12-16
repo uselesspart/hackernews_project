@@ -2,6 +2,7 @@ import re
 import argparse
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from gensim.models import Word2Vec
 from itertools import combinations
 from sklearn.linear_model import PoissonRegressor

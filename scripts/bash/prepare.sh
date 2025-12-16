@@ -76,7 +76,12 @@ install_python() {
             sudo dnf install -y python3.12 python3.12-venv python3.12-pip
             ;;
         "arch")
-            sudo pacman -Sy --noconfirm python
+            sudo pacman -S --noconfirm python git
+	    git clone https://aur.archlinux.org/python312.git
+	    cd python312
+	    makepkg -si
+	    cd ..
+	    rm -rf python312
             ;;
     esac
 }

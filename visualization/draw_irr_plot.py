@@ -1,6 +1,7 @@
 import argparse
 import pandas as pd
 import numpy as np
+from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -40,7 +41,7 @@ def main() -> int:
         plt.xlabel('IRR (exp(coef))')
         plt.title('Эффект технологий (IRR, 95% CI)')
         plt.tight_layout()
-        plt.savefig(args.output, dpi=300, bbox_inches='tight')
+        plt.savefig(Path(args.output), dpi=300, bbox_inches='tight')
         print(f"Plot saved to {args.output}")
 
         return 0
