@@ -150,10 +150,4 @@ python -m db.scripts.export_comments_for_techs -d "$DB_URL" -o "$COMMENTS_OUT" -
 echo "14) Лемматизируем комментарии..."
 bash scripts/lemmatize.sh "$COMMENTS_OUT" "$COMMENTS_LEM"
 
-echo "15) Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)..."
-python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$CONTEXT_MODEL" -o "$MATRIX_OUT"
-
-echo "16) Визуализации карты близости (visualization.draw_relationship_map)..."
-python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
-
 echo "Pipeline finished successfully."
