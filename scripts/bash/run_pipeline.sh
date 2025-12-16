@@ -142,10 +142,13 @@ python -m analytics.embeddings.scripts.train_model -p "$TITLES_TOKENS" -o "$TITL
 echo "12) Экспорт технологий (db.scripts.export_tech_names) ..."
 python -m db.scripts.export_tech_names -d "$DB_URL" -o "$TECH_OUT" --format txt
 
-echo "13) Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)..."
+echo "13) Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)..."
+python -m db.scripts.export_comments_for_techs -d "$DB_URL" -o "$COMMENTS_OUT" -m 1
+
+echo "14) Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)..."
 python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$CONTEXT_MODEL" -o "$MATRIX_OUT"
 
-echo "14) Визуализации карты близости (visualization.draw_relationship_map)..."
+echo "15) Визуализации карты близости (visualization.draw_relationship_map)..."
 python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
 
 echo "Pipeline finished successfully."
