@@ -24,8 +24,8 @@ TITLES_TOKENS=${TITLES_TOKENS:-artifacts/embeddings/words/titles.tokens.jsonl.gz
 CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl.gz}
 TITLES_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/titles}
 CONTEXT_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/context}
-TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/titles.model}
-CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/context.model}
+TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/w2v_titles_300d.model}
+CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/w2v_context_300d.model}
 COEFS_OUT=${COEFS_OUT:-artifacts/coefs.csv}
 
 source "$VENV_DIR/bin/activate"
