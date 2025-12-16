@@ -5,6 +5,14 @@ if [ ! -t 1 ] && [ -t 2 ]; then
   exec 1>&2
 fi
 
+# Всегда работаем из корня
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+ROOT_DIR="$(cd -- "$SCRIPT_DIR/../../bin" >/dev/null 2>&1 && pwd)"
+if [ ! -d "$ROOT_DIR/scripts" ]; then
+  echo "Не удалось найти корень проекта: ожидается папка 'scripts' в $ROOT_DIR"; exit 1
+fi
+cd "$ROOT_DIR"
+
 PYTHON_BIN=${PYTHON_BIN:-python3.12}
 VENV_DIR=${VENV_DIR:-venv}
 DB_URL=${DB_URL:-"sqlite:///test_sc.db"}
