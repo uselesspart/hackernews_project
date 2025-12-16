@@ -23,8 +23,10 @@ MATRIX_OUT=${MATRIX_OUT:-artifacts/similarity_matrix.csv}
 REL_MAP_OUT=${REL_MAP_OUT:-artifacts/plots/rel_map.png}
 TITLES_TOKENS=${TITLES_TOKENS:-artifacts/embeddings/words/titles.tokens.jsonl.gz}
 CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl.gz}
-TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/w2v_titles_300d.model}
-CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/w2v_context_300d.model}
+TITLES_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/titles}
+CONTEXT_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/context}
+TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/titles.model}
+CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/context.model}
 
 source "$VENV_DIR/bin/activate"
 

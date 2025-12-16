@@ -23,8 +23,10 @@ MATRIX_OUT=${MATRIX_OUT:-artifacts/similarity_matrix.csv}
 REL_MAP_OUT=${REL_MAP_OUT:-artifacts/plots/rel_map.png}
 TITLES_TOKENS=${TITLES_TOKENS:-artifacts/embeddings/words/titles.tokens.jsonl.gz}
 CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl.gz}
-TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/w2v_titles_300d.model}
-CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/w2v_context_300d.model}
+TITLES_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/titles}
+CONTEXT_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/context}
+TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/titles.model}
+CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/context.model}
 
 # Функция для определения ОС и пакетного менеджера
 detect_os() {
@@ -131,8 +133,8 @@ python -m analytics.embeddings.scripts.sentences_to_vectors -i "$CTX_LEM" -o "$C
 python -m analytics.embeddings.scripts.sentences_to_vectors -i "$TITLES_LEM" -o "$TITLES_TOKENS"
 
 echo "11) Обучение модели (analytics.embeddings.scripts.train_model)..."
-python -m analytics.embeddings.scripts.train_model -p "$CONTEXT_TOKENS" -o "$CONTEXT_MODEL"
-python -m analytics.embeddings.scripts.train_model -p "$TITLES_TOKENS" -o "$TITLES_MODEL" 
+python -m analytics.embeddings.scripts.train_model -p "$CONTEXT_TOKENS" -o "$CONTEXT_MODEL_OUT"
+python -m analytics.embeddings.scripts.train_model -p "$TITLES_TOKENS" -o "$TITLES_MODEL_OUT" 
 
 echo "12) Экспорт технологий (db.scripts.export_tech_names) ..."
 python -m db.scripts.export_tech_names -d "$DB_URL" -o "$TECH_OUT" --format txt
