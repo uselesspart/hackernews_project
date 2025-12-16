@@ -27,6 +27,7 @@ TITLES_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/titles}
 CONTEXT_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/context}
 TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/w2v_titles_300d.model}
 CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/w2v_context_300d.model}
+COMMENTS_LEM=${COMMENTS_LEM:-artifacts/tech}
 
 source "$VENV_DIR/bin/activate"
 
