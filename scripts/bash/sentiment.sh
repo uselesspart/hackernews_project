@@ -45,6 +45,6 @@ echo "1) Проводим сентимент-анализ (analytics.embeddings.
 python -m analytics.embeddings.scripts.calculate_sentiment -d "$COMMENTS_LEM" --titles-kv "$TITLES_MODEL" --comments-kv "$CONTEXT_MODEL" --out-csv "$CORPUS_OUT" --mode vader
 
 echo "2) Рисуем график (visualization.draw_sentiment_plot)..."
-python -m visualization.draw_sentiment_plot -i "$CORPUS_OUT" -o artifacts/plots/sentiment.png
+python -m visualization.draw_sentiment_plot -i "$CORPUS_OUT" -o ../plots/sentiment.png
 
 echo "Pipeline finished successfully."

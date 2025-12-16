@@ -236,7 +236,7 @@ def main() -> int:
         tech_freq = pd.Series(all_labels).value_counts()
         del all_labels
 
-        top_tech = tech_freq[tech_freq >= 20].index.tolist()[:50]
+        top_tech = tech_freq[tech_freq >= 5].index.tolist()[:50]
         print(f"Found {len(top_tech)} top {'groups' if args.groups else 'technologies'}")
 
         print("Computing pair frequencies...")
@@ -245,7 +245,7 @@ def main() -> int:
             for a, b in combinations(sorted(xs), 2):
                 pair_counts[(a, b)] = pair_counts.get((a, b), 0) + 1
         pair_df = pd.Series(pair_counts).sort_values(ascending=False)
-        top_pairs = [p for p, c in pair_df.items() if c >= 25][:50]
+        top_pairs = [p for p, c in pair_df.items() if c >= 5][:50]
         print(f"Found {len(top_pairs)} top pairs")
         del pair_counts, pair_df
 

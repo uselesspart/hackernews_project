@@ -44,6 +44,6 @@ first_file=$(find $COMMENTS_LEM -maxdepth 1 -type f -print -quit)
 if [ -z "$first_file" ]; then
   echo "Нет файлов в $COMMENTS_LEM"; exit 1
 fi
-python -m visualization.draw_wordcloud -i "$first_file" -o artifacts/plots/wc.png
+python -m visualization.draw_wordcloud -i "$first_file" -o ../plots/wc.png
 
 echo "Pipeline finished successfully."
