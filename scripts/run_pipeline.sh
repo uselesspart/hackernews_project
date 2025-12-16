@@ -16,6 +16,10 @@ RAW_OUT=${RAW_OUT:-raw_data/hn_data_2.jsonl.gz}
 BATCH_SIZE=${BATCH_SIZE:-1000}
 CTX_OUT=${CTX_OUT:-artifacts/sentences/context.txt}
 CTX_LEM=${CTX_LEM:-artifacts/sentences/context_lem.txt}
+TECH_OUT=${TECH_OUT:-artifacts/tech_names.txt}
+MODEL_PATH=${MODEL_PATH:-artifacts/embeddings/words/w2v_tokens_300d.model}
+MATRIX_OUT=${MATRIX_OUT:-artifacts/similarity_matrix.csv}
+REL_MAP_OUT=${REL_MAP_OUT:-artifacts/plots/rel_map.png}
 
 # Функция для определения ОС и пакетного менеджера
 detect_os() {
@@ -124,5 +128,17 @@ python -m analytics.embeddings.scripts.lemmatize_file -i "$CTX_OUT" -o "$CTX_LEM
 
 echo "10) Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)..."
 python -m analytics.embeddings.scripts.sentences_to_vectors -i "$CTX_LEM"
+
+echo "11) Обучение модели (analytics.embeddings.scripts.train_model)..."
+python -m analytics.embeddings.scripts.train_model -p artifacts/embeddings/words/titles.tokens5.jsonl.gz
+
+echo "12) Экспорт технологий (db.scripts.export_tech_names) ..."
+python -m db.scripts.export_tech_names -d "$DB_URL" -o "$TECH_OUT" --format txt
+
+echo "13) Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)..."
+python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$MODEL_PATH" -o "$MATRIX_OUT"
+
+echo "14) Визуализации карты близости (visualization.draw_relationship_map)..."
+python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
 
 echo "Pipeline finished successfully."
