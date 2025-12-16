@@ -17,7 +17,7 @@ BATCH_SIZE=${BATCH_SIZE:-1000}
 CTX_OUT=${CTX_OUT:-artifacts/sentences/context.txt}
 CTX_LEM=${CTX_LEM:-artifacts/sentences/context_lem.txt}
 TECH_OUT=${TECH_OUT:-artifacts/tech_names.txt}
-MODEL_PATH=${MODEL_PATH:-artifacts/embeddings/words/w2v_tokens_300d.model}
+MODEL_PATH=${MODEL_PATH:-artifacts/embeddings/words/w2v_titles_300d.model}
 MATRIX_OUT=${MATRIX_OUT:-artifacts/similarity_matrix.csv}
 REL_MAP_OUT=${REL_MAP_OUT:-artifacts/plots/rel_map.png}
 
