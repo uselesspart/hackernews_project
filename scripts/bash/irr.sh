@@ -46,4 +46,4 @@ echo "2) Рассчитавыем IRR (analytics.embeddings.scripts.calculate_ir
 python -m analytics.embeddings.scripts.calculate_irr -i "$META_OUT" -m "$TITLES_MODEL" -o "$COEFS_OUT"
 
 echo "3) Рисуем график (visualization.draw_irr_plot)..."
-python -m visualization.draw_irr_plot -i "$COEFS_OUT" -o artifacts/plots/irr.png
+python -m visualization.draw_irr_plot -i "$COEFS_OUT" -o ../plots/irr.png
