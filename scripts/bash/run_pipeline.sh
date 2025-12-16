@@ -120,6 +120,9 @@ python -m scripts.retrieve -o "$RAW_OUT" -s "$START_ID" -e "$END_ID" -w "$WORKER
 echo "7) Импорт в БД (db.scripts.ingest)..."
 python -m db.scripts.ingest -d "$DB_URL" -i "$RAW_OUT" -b "$BATCH_SIZE"
 
+echo "7.5) Классификация технологий(analytics.embeddings.scripts.classify_tech)..."
+python -m analytics.embeddings.scripts.classify_tech -d "$DB_URL"
+
 echo "8) Экспорт контекста и заголовков(db.scripts.export_context & db.scripts.export_titles)..."
 python -m db.scripts.export_context -d "$DB_URL" -o "$CTX_OUT" --format txt
 python -m db.scripts.export_titles -d "$DB_URL" -o "$TITLES_OUT" --format txt
@@ -144,7 +147,5 @@ python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$CONT
 
 echo "14) Визуализации карты близости (visualization.draw_relationship_map)..."
 python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
-
-echo "15) Экспортируем комментарии технологий по отдельности"
 
 echo "Pipeline finished successfully."
