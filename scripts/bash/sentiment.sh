@@ -34,7 +34,7 @@ CORPUS_OUT=${CORPUS_OUT:-artifacts/corpus3.csv}
 source "$VENV_DIR/bin/activate"
 
 echo "1) Проводим сентимент-анализ (analytics.embeddings.scripts.calculate_sentiment)..."
-python -m analytics.embeddings.scripts.calculate_sentiment -d "$COMMENTS_LEM" --titles-kv "$CONTEXT_MODEL" --out_csv "$CORPUS_OUT" --mode vader
+python -m analytics.embeddings.scripts.calculate_sentiment -d "$COMMENTS_LEM" --titles-kv "$CONTEXT_MODEL" --out-csv "$CORPUS_OUT" --mode vader
 
 echo "2) Рисуем график (visualization.draw_sentiment_plot)..."
 python -m visualization.draw_sentiment_plot -i "$CORPUS_OUT" -o artifacts/plots/sentiment.png
