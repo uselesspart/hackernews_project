@@ -12,17 +12,23 @@ def parse_args():
         required=True,
         help="Путь к входному TXT (по одной строке = заголовок/леммы/токены)"
     )
+    ap.add_argument(
+        "-o", "--output",
+        required=True,
+        help="Путь к выходному файлу"
+    )
     return ap.parse_args()
 
 def main() -> int:
     args = parse_args()
     try:
         in_path = Path(args.input)
+        out_path = Path(args.outtput)
         if not in_path.exists():
             raise FileNotFoundError(f"Файл не найден: {in_path}")
 
         e = TitleEmbedder()
-        e.sentences_to_vectors(in_path.as_posix())
+        e.sentences_to_vectors(in_path.as_posix(), out_path)
 
         print(f"Готово: токены сгенерированы из {in_path}")
         return 0

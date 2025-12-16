@@ -5,7 +5,6 @@ if [ ! -t 1 ] && [ -t 2 ]; then
   exec 1>&2
 fi
 
-
 PYTHON_BIN=${PYTHON_BIN:-python3.12}
 VENV_DIR=${VENV_DIR:-venv}
 DB_URL=${DB_URL:-"sqlite:///test_sc.db"}
@@ -25,20 +24,15 @@ TITLES_TOKENS=${TITLES_TOKENS:-artifacts/embeddings/words/titles.tokens.jsonl.gz
 CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl.gz}
 TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/w2v_titles_300d.model}
 CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/w2v_context_300d.model}
+COEFS_OUT=${COEFS_OUT:-artifacts/coefs.csv}
 
 source "$VENV_DIR/bin/activate"
 
-echo "1) Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)..."
-python -m db.scripts.export_comments_for_techs -d "$DB_URL" -o "$COMMENTS_OUT" -m 1
+echo "1) Экспортируем метаданные статей (db.scripts.export_stories_meta)..."
+python -m db.scripts.export_stories_meta -d "$DB_URL" -o "$META_OUT"
 
-echo "2) Лемматизируем комментарии..."
-bash scripts/lemmatize.sh artifacts/tech_comments artifacts/tech
+echo "2) Рассчитавыем IRR (analytics.embeddings.scripts.calculate_irr)..."
+python -m analytics.embeddings.scripts.calculate_irr -i "$META_OUT" -m "$TITLES_MODEL" -o "$COEFS_OUT"
 
-echo "3) Рисуем wordcloud для первого файла из папки tech (visualization.draw_wordcloud)..."
-first_file=$(find artifacts/tech -maxdepth 1 -type f -print -quit)
-if [ -z "$first_file" ]; then
-  echo "Нет файлов в artifacts/tech"; exit 1
-fi
-python -m visualization.draw_wordcloud -i "$first_file" -o artifacts/plots/wc.png
-
-echo "Pipeline finished successfully."
+echo "3) Рисуем график (visualization.draw_irr_plot)..."
+python -m visualization.draw_irr_plot -i "$META_OUT" -o artifacts/plots/irr.png

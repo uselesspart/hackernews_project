@@ -15,11 +15,16 @@ WORKERS=${WORKERS:-32}
 RAW_OUT=${RAW_OUT:-raw_data/hn_data_2.jsonl.gz}
 BATCH_SIZE=${BATCH_SIZE:-1000}
 CTX_OUT=${CTX_OUT:-artifacts/sentences/context.txt}
+TITLES_OUT=${CTX_OUT:-artifacts/sentences/titles.txt}
 CTX_LEM=${CTX_LEM:-artifacts/sentences/context_lem.txt}
+TITLES_LEM=${CTX_LEM:-artifacts/sentences/titles_lem.txt}
 TECH_OUT=${TECH_OUT:-artifacts/tech_names.txt}
-MODEL_PATH=${MODEL_PATH:-artifacts/embeddings/words/w2v_titles_300d.model}
 MATRIX_OUT=${MATRIX_OUT:-artifacts/similarity_matrix.csv}
 REL_MAP_OUT=${REL_MAP_OUT:-artifacts/plots/rel_map.png}
+TITLES_TOKENS=${TITLES_TOKENS:-artifacts/embeddings/words/titles.tokens.jsonl.gz}
+CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl.gz}
+TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/w2v_titles_300d.model}
+CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/w2v_context_300d.model}
 
 # Функция для определения ОС и пакетного менеджера
 detect_os() {
@@ -113,23 +118,27 @@ python -m scripts.retrieve -o "$RAW_OUT" -s "$START_ID" -e "$END_ID" -w "$WORKER
 echo "7) Импорт в БД (db.scripts.ingest)..."
 python -m db.scripts.ingest -d "$DB_URL" -i "$RAW_OUT" -b "$BATCH_SIZE"
 
-echo "8) Экспорт контекста (db.scripts.export_context)..."
+echo "8) Экспорт контекста и заголовков(db.scripts.export_context & db.scripts.export_titles)..."
 python -m db.scripts.export_context -d "$DB_URL" -o "$CTX_OUT" --format txt
+python -m db.scripts.export_titles -d "$DB_URL" -o "$TITLES_OUT" --format txt
 
 echo "9) Лемматизация (analytics.embeddings.scripts.lemmatize_file)..."
 python -m analytics.embeddings.scripts.lemmatize_file -i "$CTX_OUT" -o "$CTX_LEM"
+python -m analytics.embeddings.scripts.lemmatize_file -i "$TITLES_OUT" -o "$TITLES_LEM"
 
 echo "10) Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)..."
-python -m analytics.embeddings.scripts.sentences_to_vectors -i "$CTX_LEM"
+python -m analytics.embeddings.scripts.sentences_to_vectors -i "$CTX_LEM" -o "$CONTEXT_TOKENS"
+python -m analytics.embeddings.scripts.sentences_to_vectors -i "$TITLES_LEM" -o "$TITLES_TOKENS"
 
 echo "11) Обучение модели (analytics.embeddings.scripts.train_model)..."
-python -m analytics.embeddings.scripts.train_model -p artifacts/embeddings/words/titles.tokens5.jsonl.gz
+python -m analytics.embeddings.scripts.train_model -p "$CONTEXT_TOKENS" -o "$CONTEXT_MODEL"
+python -m analytics.embeddings.scripts.train_model -p "$TITLES_TOKENS" -o "$TITLES_MODEL" 
 
 echo "12) Экспорт технологий (db.scripts.export_tech_names) ..."
 python -m db.scripts.export_tech_names -d "$DB_URL" -o "$TECH_OUT" --format txt
 
 echo "13) Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)..."
-python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$MODEL_PATH" -o "$MATRIX_OUT"
+python -m analytics.embeddings.scripts.build_rel_matrix -i "$TECH_OUT" -m "$CONTEXT_MODEL" -o "$MATRIX_OUT"
 
 echo "14) Визуализации карты близости (visualization.draw_relationship_map)..."
 python -m visualization.draw_relationship_map -m "$MATRIX_OUT" -t "$TECH_OUT" -o "$REL_MAP_OUT"
