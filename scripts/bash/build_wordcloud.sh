@@ -27,15 +27,10 @@ TITLES_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/titles}
 CONTEXT_MODEL_OUT=${TITLES_MODEL:-artifacts/embeddings/words/context}
 TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/w2v_titles_300d.model}
 CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/w2v_context_300d.model}
-COMMENTS_OUT=${COMMENTS_OUT:-artifacts/tech_comments/}
-COMMENTS_LEM=${COMMENTS_LEM:-artifacts/tech}
 
 source "$VENV_DIR/bin/activate"
 
-echo "1) Лемматизируем комментарии..."
-bash scripts/lemmatize.sh "$COMMENTS_OUT" "$COMMENTS_LEM"
-
-echo "2) Рисуем wordcloud для первого файла из папки tech (visualization.draw_wordcloud)..."
+echo "1) Рисуем wordcloud для первого файла из папки tech (visualization.draw_wordcloud)..."
 first_file=$(find $COMMENTS_LEM -maxdepth 1 -type f -print -quit)
 if [ -z "$first_file" ]; then
   echo "Нет файлов в $COMMENTS_LEM"; exit 1
