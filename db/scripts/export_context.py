@@ -43,7 +43,6 @@ def main() -> int:
                         lines = [f"{title} {context}\n" for _, title, context in batch]
                         clean_lines = [clean_text(line) + "\n" for line in lines]
                         f.writelines(clean_lines)
-                        print(lines)
             elif args.format == "csv":
                 pass
             else:

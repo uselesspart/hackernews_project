@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 from adjustText import adjust_text
@@ -119,8 +120,13 @@ def main() -> int:
         plt.ylabel('Dimension 2')
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        plt.savefig(args.output, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to {args.output}")
+
+        # Создаем директории, если их нет
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        plt.savefig(out_path, dpi=300, bbox_inches='tight')
+        print(f"Plot saved to {out_path}")
         return 0
 
     except Exception as e:
