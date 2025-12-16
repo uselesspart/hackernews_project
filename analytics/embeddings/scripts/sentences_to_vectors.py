@@ -23,7 +23,7 @@ def main() -> int:
     args = parse_args()
     try:
         in_path = Path(args.input)
-        out_path = Path(args.outtput)
+        out_path = Path(args.output)
         if not in_path.exists():
             raise FileNotFoundError(f"Файл не найден: {in_path}")
 
