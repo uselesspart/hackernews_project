@@ -76,12 +76,7 @@ install_python() {
             sudo dnf install -y python3.12 python3.12-venv python3.12-pip
             ;;
         "arch")
-            sudo pacman -S --noconfirm python git
-	    git clone https://aur.archlinux.org/python312.git
-	    cd python312
-	    makepkg -si
-	    cd ..
-	    rm -rf python312
+            sudo pacman -Sy --noconfirm python
             ;;
     esac
 }
@@ -135,32 +130,35 @@ python -m scripts.retrieve -o "$RAW_OUT" -s "$START_ID" -e "$END_ID" -w "$WORKER
 echo "7) Импорт в БД (db.scripts.ingest)..."
 python -m db.scripts.ingest -d "$DB_URL" -i "$RAW_OUT" -b "$BATCH_SIZE"
 
-echo "7.5) Классификация технологий(analytics.embeddings.scripts.classify_tech)..."
+echo "8) Классификация технологий(analytics.embeddings.scripts.classify_tech)..."
 python -m analytics.embeddings.scripts.classify_tech -d "$DB_URL"
 
-echo "8) Экспорт контекста и заголовков(db.scripts.export_context & db.scripts.export_titles)..."
+echo "9) Удаляем из БД истории без упоминания технологий..."
+python -m db.scripts.trim -d "$DB_URL"
+
+echo "10) Экспорт контекста и заголовков(db.scripts.export_context & db.scripts.export_titles)..."
 python -m db.scripts.export_context -d "$DB_URL" -o "$CTX_OUT" --format txt
 python -m db.scripts.export_titles -d "$DB_URL" -o "$TITLES_OUT" --format txt
 
-echo "9) Лемматизация (analytics.embeddings.scripts.lemmatize_file)..."
+echo "11) Лемматизация (analytics.embeddings.scripts.lemmatize_file)..."
 python -m analytics.embeddings.scripts.lemmatize_file -i "$CTX_OUT" -o "$CTX_LEM"
 python -m analytics.embeddings.scripts.lemmatize_file -i "$TITLES_OUT" -o "$TITLES_LEM"
 
-echo "10) Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)..."
+echo "12) Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)..."
 python -m analytics.embeddings.scripts.sentences_to_vectors -i "$CTX_LEM" -o "$CONTEXT_TOKENS"
 python -m analytics.embeddings.scripts.sentences_to_vectors -i "$TITLES_LEM" -o "$TITLES_TOKENS"
 
-echo "11) Обучение модели (analytics.embeddings.scripts.train_model)..."
+echo "13) Обучение модели (analytics.embeddings.scripts.train_model)..."
 python -m analytics.embeddings.scripts.train_model -p "$CONTEXT_TOKENS" -o "$CONTEXT_MODEL_OUT"
 python -m analytics.embeddings.scripts.train_model -p "$TITLES_TOKENS" -o "$TITLES_MODEL_OUT" 
 
-echo "12) Экспорт технологий (db.scripts.export_tech_names) ..."
+echo "14) Экспорт технологий (db.scripts.export_tech_names) ..."
 python -m db.scripts.export_tech_names -d "$DB_URL" -o "$TECH_OUT" --format txt
 
-echo "13) Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)..."
+echo "15) Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)..."
 python -m db.scripts.export_comments_for_techs -d "$DB_URL" -o "$COMMENTS_OUT" -m 1
 
-echo "14) Лемматизируем комментарии..."
+echo "16) Лемматизируем комментарии..."
 bash scripts/lemmatize.sh "$COMMENTS_OUT" "$COMMENTS_LEM"
 
 echo "Pipeline finished successfully."
