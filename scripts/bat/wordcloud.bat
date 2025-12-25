@@ -3,6 +3,8 @@ setlocal EnableDelayedExpansion
 
 REM Wordcloud pipeline (Windows .bat equivalent of scripts/bash/wordcloud.sh)
 
+chcp 65001
+
 :: Always operate from project root (bin)
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
@@ -16,7 +18,7 @@ cd /d "%ROOT_DIR%"
 
 :: Defaults
 if not defined VENV_DIR set "VENV_DIR=venv"
-if not defined COMMENTS_LEM set "COMMENTS_LEM=artifacts/tech"
+if not defined COMMENTS_LEM set "COMMENTS_LEM=artifacts/tech_comments"
 
 :: Prefer py -3, fallback to python
 set "PY_CMD=py -3"
@@ -26,6 +28,8 @@ where py >nul 2>&1 || set "PY_CMD=python"
 if exist "%VENV_DIR%\Scripts\activate.bat" (
   call "%VENV_DIR%\Scripts\activate.bat"
 )
+
+set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
 
 echo 1. Рисуем wordcloud для первого файла из папки tech (visualization.draw_wordcloud)...
 set "first_file="
@@ -44,19 +48,3 @@ if errorlevel 1 (
 
 echo Pipeline finished successfully.
 endlocal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

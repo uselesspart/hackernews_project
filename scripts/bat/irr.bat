@@ -3,6 +3,9 @@ setlocal EnableDelayedExpansion
 
 REM IRR pipeline (Windows .bat equivalent of scripts/bash/irr.sh)
 
+
+chcp 65001
+
 :: Always operate from project root (bin)
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
@@ -47,6 +50,10 @@ where py >nul 2>&1 || set "PY_CMD=python"
 if exist "%VENV_DIR%\Scripts\activate.bat" (
   call "%VENV_DIR%\Scripts\activate.bat"
 )
+
+set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
+
+
 echo 1. Экспортируем метаданные статей (db.scripts.export_stories_meta)...
 %PY_CMD% -m db.scripts.export_stories_meta -d "%DB_URL%" -o "%META_OUT%"
 if errorlevel 1 (

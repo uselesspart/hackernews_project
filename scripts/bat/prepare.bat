@@ -3,6 +3,9 @@ setlocal EnableDelayedExpansion
 
 REM Prepare pipeline (Windows .bat equivalent of scripts/bash/prepare.sh)
 
+
+chcp 65001
+
 :: Always operate from project root (bin)
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
@@ -15,7 +18,7 @@ if not exist "%ROOT_DIR%\scripts\" (
 cd /d "%ROOT_DIR%"
 
 :: Defaults (can be overridden by environment variables)
-if not defined PYTHON_BIN set "PYTHON_BIN=python3.12"
+if not defined PYTHON_BIN set "PYTHON_BIN=python3"
 if not defined VENV_DIR set "VENV_DIR=venv"
 if not defined DB_URL set "DB_URL=sqlite:///test_sc.db"
 if not defined START_ID set "START_ID=38000000"
@@ -39,25 +42,13 @@ if not defined CONTEXT_MODEL set "CONTEXT_MODEL=artifacts/embeddings/words/conte
 if not defined COMMENTS_OUT set "COMMENTS_OUT=artifacts/tech_comments/"
 if not defined COMMENTS_LEM set "COMMENTS_LEM=artifacts/tech"
 
-:: Prefer py -3, fallback to python
-set "PY_CMD=py -3"
-where py >nul 2>&1 || set "PY_CMD=python"
-
-echo 1. Проверка python...
-:: Check for configured python or try some alternatives
-%PY_CMD% --version >nul 2>&1 || (
-  echo "%PY_CMD%" not available, trying alternatives...
-  for %%p in (python3.12 python3 python) do (
-    for /f "usebackq tokens=*" %%x in (`where %%p 2^>nul`) do (
-      set "PY_CMD=%%p"
-      goto :py_found
-    )
-  )
-  echo Ошибка: Python не найден. Установите Python или задайте PYTHON_BIN.
+:: 1. Проверка/установка Python 3.12
+call :ensure_python312
+if errorlevel 1 (
+  echo Ошибка: не удалось найти или установить Python 3.12
   exit /b 1
 )
-:py_found
-echo Using %PY_CMD%
+echo Используется Python: %PY_CMD%
 
 echo 2. Создаём виртуальное окружение...
 %PY_CMD% -m venv "%VENV_DIR%"
@@ -66,18 +57,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
+set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
+
+
 :: Activate venv if activation script exists
 if exist "%VENV_DIR%\Scripts\activate.bat" (
   call "%VENV_DIR%\Scripts\activate.bat"
 )
 
 echo 3. Обновляем pip и устанавливаем зависимости...
-pip install --upgrade pip
+%PY_CMD% -m pip install --upgrade pip 
 if errorlevel 1 (
   echo pip upgrade failed
   exit /b 1
 )
-pip install -r requirements.txt
+%PY_CMD% -m pip install -r requirements.txt
 if errorlevel 1 (
   echo pip install failed
   exit /b 1
@@ -119,7 +113,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 10. Экспорт контекста и заголовков(db.scripts.export_context & db.scripts.export_titles)...
+echo 10. Экспорт контекста и заголовков(db.scripts.export_context и db.scripts.export_titles)...
 %PY_CMD% -m db.scripts.export_context -d "%DB_URL%" -o "%CTX_OUT%" --format txt
 if errorlevel 1 (
   echo Ошибка при экспорте контекста
@@ -190,116 +184,113 @@ if errorlevel 1 (
 
 echo Pipeline finished successfully.
 endlocal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-endlocal
+exit /b 0
+
+:: ---------- ФУНКЦИИ ----------
+
+:ensure_python312
+  echo 1. Проверка Python 3.12...
+
+  set "PY_CMD="
+
+  REM 1) Если явно задан PYTHON_BIN — проверяем, что это 3.12
+  if defined PYTHON_BIN (
+    "%PYTHON_BIN%" -c "import sys; assert sys.version_info[:2]==(3,12)" >nul 2>&1
+    if not errorlevel 1 (
+      set "PY_CMD=%PYTHON_BIN%"
+      goto :eof
+    )
+  )
+
+  REM 2) Пытаемся py -3.12
+  py -3.12 -c "print(1)" >nul 2>&1
+  if not errorlevel 1 (
+    set "PY_CMD=py -3.12"
+    goto :eof
+  )
+
+  REM 3) Пытаемся python3.12 в PATH
+  where python3.12 >nul 2>&1
+  if not errorlevel 1 (
+    set "PY_CMD=python3.12"
+    goto :eof
+  )
+
+  echo Python 3.12 не найден. Пытаемся установить...
+
+  call :install_python312
+  if errorlevel 1 (
+    echo Не удалось установить Python 3.12 автоматически.
+    exit /b 1
+  )
+
+  REM Повторная проверка после установки
+  py -3.12 -c "print(1)" >nul 2>&1
+  if not errorlevel 1 (
+    set "PY_CMD=py -3.12"
+    goto :eof
+  )
+  where python3.12 >nul 2>&1
+  if not errorlevel 1 (
+    set "PY_CMD=python3.12"
+    goto :eof
+  )
+
+  echo Python 3.12 установлен, но не найден в PATH/Launcher. Перезапустите терминал и попробуйте снова.
+  exit /b 1
+goto :eof
+
+:install_python312
+  REM Попытка 1: winget
+  where winget >nul 2>&1
+  if %errorlevel%==0 (
+    echo Установка Python 3.12 через winget...
+    winget install -e --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements --silent
+    if not errorlevel 1 (
+      goto :install_done
+    ) else (
+      echo winget не смог установить Python 3.12.
+    )
+  ) else (
+    echo winget не найден.
+  )
+
+  REM Попытка 2: choco
+  where choco >nul 2>&1
+  if %errorlevel%==0 (
+    echo Установка Python 3.12 через Chocolatey...
+    choco install -y python312
+    if not errorlevel 1 (
+      goto :install_done
+    ) else (
+      echo Chocolatey не смог установить Python 3.12.
+    )
+  ) else (
+    echo Chocolatey не найден.
+  )
+
+  REM Попытка 3: прямая загрузка официального установщика
+  set "PY_URL=https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
+  set "PY_TMP=%TEMP%\python312_installer.exe"
+
+  echo Скачивание установщика Python 3.12 с python.org...
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -Uri '%PY_URL%' -OutFile '%PY_TMP%' -UseBasicParsing } catch { exit 1 }"
+  if errorlevel 1 (
+    echo Не удалось скачать установщик по адресу: %PY_URL%
+    exit /b 1
+  )
+
+  echo Тихая установка Python 3.12 (потребуется подтверждение UAC)...
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%PY_TMP%' -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1 Include_launcher=1 Shortcuts=1' -Verb RunAs -Wait; exit $LASTEXITCODE"
+  set "INSTALL_RC=%ERRORLEVEL%"
+
+  del /q "%PY_TMP%" >nul 2>&1
+
+  if not "%INSTALL_RC%"=="0" (
+    echo Установщик Python вернул код %INSTALL_RC%.
+    exit /b 1
+  )
+
+:install_done
+  echo Установка Python 3.12 завершена.
+  exit /b 0
