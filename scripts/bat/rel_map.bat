@@ -32,6 +32,10 @@ if exist "%VENV_DIR%\Scripts\activate.bat" (
   call "%VENV_DIR%\Scripts\activate.bat"
 )
 
+set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
+
+chcp 65001
+
 echo 1. Построение матрицы отношений (analytics.embeddings.scripts.build_rel_matrix)...
 %PY_CMD% -m analytics.embeddings.scripts.build_rel_matrix -i "%TECH_OUT%" -m "%CONTEXT_MODEL%" -o "%MATRIX_OUT%"
 if errorlevel 1 (

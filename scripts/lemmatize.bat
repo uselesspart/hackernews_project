@@ -11,6 +11,21 @@ if "%~1"=="" (
   exit /b 1
 )
 
+:: Defaults
+if not defined VENV_DIR set "VENV_DIR=venv"
+if not defined COMMENTS_LEM set "COMMENTS_LEM=artifacts/tech"
+
+:: Prefer py -3, fallback to python
+set "PY_CMD=py -3"
+where py >nul 2>&1 || set "PY_CMD=python"
+
+:: Activate venv if it exists (Windows)
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+  call "%VENV_DIR%\Scripts\activate.bat"
+)
+
+set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
+
 :: Установка переменных входной и выходной папок
 set "IN_DIR=%~1"
 if "%~2"=="" (
