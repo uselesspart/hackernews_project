@@ -70,20 +70,33 @@ def phrase_vector(text, model):
         return None
     return np.mean(vecs, axis=0)
 
-def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2.0, neg_window=3):
+class AspectAttention:
+    """
+    Вес слова = max(cos(слово, ключ), 0) ** p. Вектор ключа считается один раз,
+    веса кэшируются по словам — вместо пересчёта для каждого комментария.
+    """
+
+    def __init__(self, model, keyword=None, p=2.0):
+        self.model = model
+        self.p = p
+        self.kvec = phrase_vector(keyword, model) if keyword else None
+        self._cache = {}
+
+    def __call__(self, w):
+        if self.kvec is None or w not in self.model:
+            return 1.0
+        att = self._cache.get(w)
+        if att is None:
+            att = max(cos(self.model[w], self.kvec), 0.0) ** self.p
+            self._cache[w] = att
+        return att
+
+
+def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2.0, neg_window=3,
+                           attention=None):
     toks = prep(text)
-    att = {}
-    if keyword:
-        kvec = phrase_vector(keyword, model_comments)
-        if kvec is not None:
-            for w in toks:
-                if w in model_comments:
-                    s = cos(model_comments[w], kvec)
-                    att[w] = max(s, 0.0) ** p
-        else:
-            att = {w: 1.0 for w in toks}
-    else:
-        att = {w: 1.0 for w in toks}
+    if attention is None:
+        attention = AspectAttention(model_comments, keyword, p)
 
     score, weight_sum = 0.0, 0.0
     neg_span = 0
@@ -113,7 +126,7 @@ def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2
         pol = polarity_lex.get(w, 0.0)
         if pol != 0.0:
             sign = -1.0 if neg_span > 0 else 1.0
-            w_att = att.get(w, 1.0)
+            w_att = attention(w)
             contrib = pol * sign * modifier * w_att
             score += contrib
             weight_sum += abs(w_att)
@@ -163,7 +176,8 @@ def combined_doc_vec(text, model_titles, model_comments):
     return np.concatenate([v1, v2])
 
 def bootstrap_classifier(texts, model_titles, model_comments, polarity_lex, keyword=None, top_percent=20):
-    scores = np.array([aspect_sentiment_score(t, model_comments, polarity_lex, keyword=keyword) for t in texts])
+    attention = AspectAttention(model_comments, keyword)
+    scores = np.array([aspect_sentiment_score(t, model_comments, polarity_lex, attention=attention) for t in texts])
     labels = np.array([label_from_score(s) for s in scores])
 
     abs_scores = np.abs(scores)
@@ -241,11 +255,12 @@ def read_comments_from_file(path):
 def process_single_file(file_path, model_titles, model_comments, polarity_lex, vader, mode, keyword, 
                         auto_thr, auto_percent, threshold, p, neg_window, top_percent):
     comments = read_comments_from_file(file_path)
+    attention = AspectAttention(model_comments, keyword, p)
     rows = []
     thr_used = threshold
 
     if mode == "lexicon":
-        scores = [aspect_sentiment_score(t, model_comments, polarity_lex, keyword=keyword, p=p, neg_window=neg_window) for t in comments]
+        scores = [aspect_sentiment_score(t, model_comments, polarity_lex, neg_window=neg_window, attention=attention) for t in comments]
         if auto_thr:
             abs_scores = np.abs(scores)
             thr_used = max(np.percentile(abs_scores, auto_percent), 0.08)
@@ -269,7 +284,7 @@ def process_single_file(file_path, model_titles, model_comments, polarity_lex, v
     elif mode == "bootstrap":
         clf = bootstrap_classifier(comments, model_titles, model_comments, polarity_lex, keyword=keyword, top_percent=top_percent)
         if clf is None:
-            scores = [aspect_sentiment_score(t, model_comments, polarity_lex, keyword=keyword, p=p, neg_window=neg_window) for t in comments]
+            scores = [aspect_sentiment_score(t, model_comments, polarity_lex, neg_window=neg_window, attention=attention) for t in comments]
             thr_used = threshold if not auto_thr else max(np.percentile(np.abs(scores), auto_percent), 0.08)
             labels = [label_from_score(s, thr=thr_used) for s in scores]
             for i, (t, s, y) in enumerate(zip(comments, scores, labels)):

@@ -113,21 +113,23 @@ class HNHandler:
                 from sqlalchemy.dialects.sqlite import insert as dialect_insert
             else:
                 from sqlalchemy.dialects.postgresql import insert as dialect_insert
-            stmt = dialect_insert(tbl).values(rows)
+            stmt = dialect_insert(tbl)
             stmt = stmt.on_conflict_do_update(
                 index_elements=[tbl.c.id],
                 set_={c: stmt.excluded[c] for c in update_cols},
             )
         elif dialect in ("mysql", "mariadb"):
             from sqlalchemy.dialects.mysql import insert as my_insert
-            ins = my_insert(tbl).values(rows)
+            ins = my_insert(tbl)
             stmt = ins.on_duplicate_key_update({c: ins.inserted[c] for c in update_cols})
         else:
-            stmt = tbl.insert().values(rows)
+            stmt = tbl.insert()
 
-        res = session.execute(stmt)
+        # executemany вместо одного INSERT ... VALUES (...), (...): драйвер сам пакетирует,
+        # и не упираемся в лимит числа параметров SQLite (32766) при большом batch_size
+        session.execute(stmt, rows)
         session.commit()
-        return res.rowcount
+        return len(rows)
 
     def _to_story(self, item: dict) -> Optional[Story]:
         if item.get("type") != "story":

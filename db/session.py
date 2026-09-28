@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from sqlalchemy import Boolean, create_engine, inspect
+from sqlalchemy import Boolean, create_engine, event, inspect
 from sqlalchemy.orm import sessionmaker
 
 from .models import Base
@@ -25,10 +25,25 @@ def upgrade_schema(engine) -> None:
                     conn.exec_driver_sql(
                         f"ALTER TABLE {quote(table)} ADD COLUMN {quote(name)} {type_sql}"
                     )
+        # create_all создаёт индексы только вместе с новой таблицей
+        for tbl in Base.metadata.sorted_tables:
+            for index in tbl.indexes:
+                index.create(conn, checkfirst=True)
 
 
-def get_engine(db_url: str):
-    return create_engine(db_url, pool_pre_ping=True, future=True)
+def _sqlite_pragmas(dbapi_conn, _record):
+    cur = dbapi_conn.cursor()
+    # WAL + NORMAL: коммит пакета не ждёт полного fsync, читатели не блокируют писателя
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA synchronous=NORMAL")
+    cur.close()
+
+
+def get_engine(db_url: str, **kwargs):
+    engine = create_engine(db_url, pool_pre_ping=True, future=True, **kwargs)
+    if engine.dialect.name == "sqlite" and engine.url.database not in (None, "", ":memory:"):
+        event.listen(engine, "connect", _sqlite_pragmas)
+    return engine
 
 
 @contextmanager

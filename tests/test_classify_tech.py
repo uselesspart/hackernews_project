@@ -28,6 +28,14 @@ def test_classify_stories_links_techs(ingested_db):
         assert session.query(Tech).count() == len(PATTERNS)
 
 
+def test_classify_stories_commits_between_batches(ingested_db):
+    # Регрессия: при чтении потоковым курсором коммит пакета на большой БД давал
+    # "database is locked". batch_size=1 заставляет коммитить после каждой истории.
+    with session_scope(ingested_db) as session:
+        assert classify_stories(session, batch_size=1) == 3
+        assert _links(session)[2] == ["go", "rust"]
+
+
 def test_classify_stories_rerun_adds_nothing(classified_db):
     with session_scope(classified_db) as session:
         assert classify_stories(session) == 0

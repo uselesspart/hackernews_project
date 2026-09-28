@@ -14,7 +14,8 @@ story_tech = Table(
     "story_tech",
     Base.metadata,
     Column("story_id", ForeignKey("story.id"), primary_key=True),
-    Column("tech_id", ForeignKey("tech.id"), primary_key=True),
+    # Составной PK (story_id, tech_id) не помогает поиску по tech_id — нужен отдельный индекс
+    Column("tech_id", ForeignKey("tech.id"), primary_key=True, index=True),
 )
 
 
@@ -47,7 +48,8 @@ class Comment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     author: Mapped[Optional[str]] = mapped_column(String(50))
-    parent: Mapped[Optional[int]] = mapped_column(Integer)
+    # По parent строятся ветки (JOIN с историей и рекурсивный CTE) — без индекса это полный скан
+    parent: Mapped[Optional[int]] = mapped_column(Integer, index=True)
     time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     text: Mapped[Optional[str]] = mapped_column(String)
     dead: Mapped[Optional[bool]] = mapped_column(Boolean)
@@ -63,10 +65,11 @@ class Tech(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
+    # Не selectin: иначе загрузка любого Tech тянет за собой все его истории (тысячи строк)
     stories: Mapped[List[Story]] = relationship(
         secondary=story_tech,
         back_populates="techs",
-        lazy="selectin",
+        lazy="select",
     )
 
     def __repr__(self) -> str:

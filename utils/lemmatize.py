@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List, Iterator, Set
+from typing import Iterable, List, Iterator, Set
 
 _en_nlp = None 
 
@@ -70,35 +70,51 @@ def load_preserve_words(path: Path | None) -> Set[str]:
     
     return words
 
+# Кэш "токен -> леммы" на весь процесс. Словарь корпуса быстро насыщается (закон Ципфа),
+# поэтому spaCy вызывается почти только для новых слов. Слова из preserve_words
+# проверяются до кэша, так что кэш от них не зависит.
+_LEMMA_CACHE: dict[str, tuple[str, ...]] = {}
+_LEMMA_CACHE_MAX = 2_000_000
+
+
+def _lemmas_from_doc(token: str, doc) -> tuple[str, ...]:
+    if len(doc) == 0:
+        return (token,)
+    if len(doc) == 1:
+        return (doc[0].lemma_,)
+    if "'" in token:
+        # Сокращения: "don't" -> ("do", "not"); притяжательное "'s" отбрасываем
+        return tuple(tok.lemma_ for tok in doc if tok.lemma_ not in ("'s", "'"))
+    # Составные слова через дефис/подчёркивание оставляем одним токеном
+    return (token,)
+
+
+def _fill_lemma_cache(tokens: Iterable[str], preserve_words: Set[str]) -> None:
+    missing = list({t for t in tokens if t not in _LEMMA_CACHE and t.lower() not in preserve_words})
+    if not missing:
+        return
+    if len(_LEMMA_CACHE) + len(missing) > _LEMMA_CACHE_MAX:
+        _LEMMA_CACHE.clear()
+    for doc, t in zip(_en_nlp.pipe(missing, batch_size=1000), missing):
+        _LEMMA_CACHE[t] = _lemmas_from_doc(t, doc)
+
+
+def _apply_lemmas(tokens: List[str], preserve_words: Set[str]) -> List[str]:
+    out: List[str] = []
+    for t in tokens:
+        if t.lower() in preserve_words:
+            out.append(t)
+        else:
+            out.extend(_LEMMA_CACHE[t])
+    return out
+
+
 def _lemmatize_en_batch(tokens: List[str], preserve_words: Set[str] | None = None) -> List[str]:
     if _en_nlp is None:
         return tokens
-    
-    if preserve_words is None:
-        preserve_words = set()
-    
-    cache: dict[str, List[str]] = {}
-    uniq, seen = [], set()
-
-    for t in tokens:
-        if t not in seen:
-            uniq.append(t)
-            seen.add(t)
-
-    for doc, t in zip(_en_nlp.pipe(uniq, batch_size=1000), uniq):
-        if t.lower() in preserve_words or len(doc) == 0:
-            cache[t] = [t]
-        elif len(doc) == 1:
-            cache[t] = [doc[0].lemma_]
-        elif "'" in t:
-            # Сокращения: "don't" -> ["do", "not"]; раньше оставалось только "do",
-            # и отрицание терялось. Притяжательное "'s" отбрасываем.
-            cache[t] = [tok.lemma_ for tok in doc if tok.lemma_ not in ("'s", "'")]
-        else:
-            # Составные слова через дефис/подчёркивание оставляем одним токеном
-            cache[t] = [t]
-
-    return [lemma for t in tokens for lemma in cache[t]]
+    preserve_words = preserve_words or set()
+    _fill_lemma_cache(tokens, preserve_words)
+    return _apply_lemmas(tokens, preserve_words)
 
 def tokenize_and_lemmatize(
     text: str,
@@ -109,22 +125,18 @@ def tokenize_and_lemmatize(
     lemmatize_en: bool = True,
     preserve_words: Set[str] | None = None,
 ) -> List[str]:
+    tokens = _tokenize(text, keep_punct=keep_punct, num_token=num_token, lower=lower)
+    if tokens and lemmatize_en:
+        tokens = _lemmatize_en_batch(tokens, preserve_words)
+    return tokens
+
+
+def _tokenize(text: str, *, keep_punct: bool, num_token: str | None, lower: bool) -> List[str]:
     text = canonicalize_tech_mentions(text)
     if lower:
         text = text.lower()
-
     pattern = TOKEN_PATTERN if keep_punct else WORD_PATTERN
-    tokens = pattern.findall(text)
-    
-    if not tokens:
-        return []
-    
-    tokens = [(num_token if num_token is not None and t.isdigit() else t) for t in tokens]
-    
-    if lemmatize_en:
-        tokens = _lemmatize_en_batch(tokens, preserve_words)
-    
-    return tokens
+    return [(num_token if num_token is not None and t.isdigit() else t) for t in pattern.findall(text)]
 
 def iter_tokenized_lines(
     path: str | Path,
@@ -135,19 +147,31 @@ def iter_tokenized_lines(
     lemmatize_en: bool = True,
     preserve_empty: bool = False,
     preserve_words: Set[str] | None = None,
+    chunk_size: int = 5000,
 ) -> Iterator[List[str]]:
+    lemmatize = lemmatize_en and _en_nlp is not None
+    preserve_words = preserve_words or set()
+
+    def process(chunk: List[List[str] | None]) -> Iterator[List[str]]:
+        # Все новые слова чанка лемматизируются одним вызовом spaCy
+        if lemmatize:
+            _fill_lemma_cache((t for tokens in chunk if tokens for t in tokens), preserve_words)
+        for tokens in chunk:
+            if tokens is None:
+                yield []
+            else:
+                yield _apply_lemmas(tokens, preserve_words) if lemmatize else tokens
+
+    chunk: List[List[str] | None] = []
     with Path(path).open("r", encoding="utf-8") as f:
         for raw in f:
             line = raw.rstrip("\n")
             if not line.strip():
                 if preserve_empty:
-                    yield []
-                continue
-            yield tokenize_and_lemmatize(
-                line,
-                keep_punct=keep_punct,
-                num_token=num_token,
-                lower=lower,
-                lemmatize_en=lemmatize_en,
-                preserve_words=preserve_words,
-            )
+                    chunk.append(None)
+            else:
+                chunk.append(_tokenize(line, keep_punct=keep_punct, num_token=num_token, lower=lower))
+            if len(chunk) >= chunk_size:
+                yield from process(chunk)
+                chunk = []
+    yield from process(chunk)

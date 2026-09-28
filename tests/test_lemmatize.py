@@ -71,6 +71,28 @@ def test_custom_preserve_words():
     assert tokenize_and_lemmatize("running shoes", preserve_words={"running"}) == ["running", "shoe"]
 
 
+@pytest.mark.spacy
+@pytest.mark.parametrize("chunk_size", [1, 2, 1000])
+def test_iter_tokenized_lines_matches_per_line_lemmatization(tmp_path, chunk_size):
+    lines = ["Cats were running fast", "", "I don't like C++ or C#", "Running cats!", "Windows 11 users"]
+    path = tmp_path / "in.txt"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    preserve = load_preserve_words(None)
+
+    expected = [tokenize_and_lemmatize(line, preserve_words=preserve) for line in lines if line]
+    lemmatize._LEMMA_CACHE.clear()
+    got = list(iter_tokenized_lines(path, preserve_words=preserve, chunk_size=chunk_size))
+    assert got == expected
+
+
+@pytest.mark.spacy
+def test_lemma_cache_does_not_leak_preserved_words():
+    # Слово, закэшированное как лемма, должно оставаться нетронутым, если его защитили позже
+    assert tokenize_and_lemmatize("running", preserve_words=set()) == ["run"]
+    assert tokenize_and_lemmatize("running", preserve_words={"running"}) == ["running"]
+    assert tokenize_and_lemmatize("running", preserve_words=set()) == ["run"]
+
+
 def test_load_preserve_words_from_file(tmp_path):
     path = tmp_path / "preserve.txt"
     path.write_text("# comment\nFooBar\n\nbaz\n", encoding="utf-8")

@@ -1,18 +1,11 @@
-import re
 import argparse
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 from gensim.models import Word2Vec
 from itertools import combinations
-from analytics.embeddings.patterns import PATTERNS
+from analytics.embeddings.patterns import COMPILED_PATTERNS as COMPILED
 from utils.groups import categories as RAW_CATEGORIES  # <-- прямой импорт категорий
-
-
-COMPILED: dict[str, re.Pattern] = {
-    canon: re.compile("|".join(p.pattern for p in plist), re.IGNORECASE)
-    for canon, plist in PATTERNS.items()
-}
 
 
 def normalize_token(name: str) -> str:
@@ -87,53 +80,65 @@ def cos(a, b):
     return float(sim)
 
 
+class PairSimilarity:
+    """
+    min/mean/max косинусной близости между технологиями заголовка.
+    Технологий ~100, поэтому близость каждой пары считается один раз и кэшируется,
+    а не пересчитывается для каждого из сотен тысяч заголовков.
+    """
+
+    def __init__(self, vec_map: dict[str, np.ndarray]):
+        self.vec_map = {k: v for k, v in vec_map.items() if np.all(np.isfinite(v))}
+        self._cache: dict[tuple[str, str], float] = {}
+
+    def _sim(self, a: str, b: str) -> float:
+        key = (a, b)
+        sim = self._cache.get(key)
+        if sim is None:
+            sim = cos(self.vec_map[a], self.vec_map[b])
+            self._cache[key] = sim
+        return sim
+
+    def stats(self, xs: list[str]) -> tuple[float, float, float]:
+        present = [x for x in xs if x in self.vec_map]
+        if len(present) <= 1:
+            return (0.0, 0.0, 0.0)
+        sims = [self._sim(a, b) for i, a in enumerate(present) for b in present[i + 1:]]
+        sims = [s for s in sims if np.isfinite(s)]
+        if not sims:
+            return (0.0, 0.0, 0.0)
+        return (float(min(sims)), float(np.mean(sims)), float(max(sims)))
+
+
+def token_vec_map(w2v: Word2Vec, tokens) -> dict[str, np.ndarray]:
+    kv = w2v.wv
+    return {t: kv[t] for t in tokens if t in kv}
+
+
 def title_stats_tokens(xs: list[str], w2v: Word2Vec):
     """Схожесть по токенам через модель"""
-    if not xs:
-        return (0.0, 0.0, 0.0)
-    kv = w2v.wv
-    vecs = []
-    for x in xs:
-        if x in kv:
-            try:
-                vec = kv[x]
-                if not np.any(np.isnan(vec)) and not np.any(np.isinf(vec)):
-                    vecs.append(vec)
-            except:
-                continue
-    if len(vecs) <= 1:
-        return (0.0, 0.0, 0.0)
-    sims = []
-    for i in range(len(vecs)):
-        for j in range(i + 1, len(vecs)):
-            sim = cos(vecs[i], vecs[j])
-            if not np.isnan(sim) and not np.isinf(sim):
-                sims.append(sim)
-    if not sims:
-        return (0.0, 0.0, 0.0)
-    return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
+    return PairSimilarity(token_vec_map(w2v, xs)).stats(xs)
 
 
 def title_stats_vecmap(xs: list[str], vec_map: dict[str, np.ndarray]):
     """Схожесть по предвычисленным векторам (для групп)"""
-    if not xs:
-        return (0.0, 0.0, 0.0)
-    vecs = []
-    for x in xs:
-        v = vec_map.get(x)
-        if v is not None and not np.any(np.isnan(v)) and not np.any(np.isinf(v)):
-            vecs.append(v)
-    if len(vecs) <= 1:
-        return (0.0, 0.0, 0.0)
-    sims = []
-    for i in range(len(vecs)):
-        for j in range(i + 1, len(vecs)):
-            sim = cos(vecs[i], vecs[j])
-            if not np.isnan(sim) and not np.isinf(sim):
-                sims.append(sim)
-    if not sims:
-        return (0.0, 0.0, 0.0)
-    return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
+    return PairSimilarity(vec_map).stats(xs)
+
+
+def indicator_features(tech_lists: pd.Series, top_tech: list[str],
+                       top_pairs: list[tuple[str, str]]) -> dict[str, pd.Series]:
+    """has_<tech> и has_pair_<a>__<b> одним проходом вместо apply на каждый признак."""
+    # Пары могут включать технологии за пределами топа — им тоже нужны индикаторы
+    needed = list(dict.fromkeys([*top_tech, *(t for pair in top_pairs for t in pair)]))
+    exploded = tech_lists.explode().dropna()
+    exploded = exploded[exploded.isin(needed)]
+    dummies = pd.crosstab(exploded.index, exploded).clip(upper=1)
+    dummies = dummies.reindex(index=tech_lists.index, columns=needed, fill_value=0).astype(np.int8)
+
+    features = {f'has_{t}': dummies[t] for t in top_tech}
+    for a, b in top_pairs:
+        features[f'has_pair_{a}__{b}'] = (dummies[a] & dummies[b]).astype(np.int8)
+    return features
 
 
 def linearly_dependent_columns(X: pd.DataFrame) -> list[str]:
@@ -278,36 +283,12 @@ def main() -> int:
         del pair_counts, pair_df
 
         print("Building feature columns...")
-        feature_data: dict[str, pd.Series] = {}
+        feature_data: dict[str, pd.Series] = indicator_features(df['tech_list'], top_tech, top_pairs)
 
-        for t in top_tech:
-            feature_data[f'has_{t}'] = df['tech_list'].apply(lambda xs: t in xs).astype(np.int8)
-
-        for a, b in top_pairs:
-            feature_data[f'has_pair_{a}__{b}'] = df['tech_list'].apply(
-                lambda xs, aa=a, bb=b: (aa in xs and bb in xs)
-            ).astype(np.int8)
-
-        print("Computing similarity statistics (this may take a while)...")
-        batch_size = 1000
-        sim_results = []
-
-        if args.groups:
-            # Используем предвычисленные векторы групп
-            for i in range(0, len(df), batch_size):
-                if i % 50000 == 0:
-                    print(f"  Processing batch {i}/{len(df)}...")
-                batch = df['tech_list'].iloc[i:i+batch_size]
-                batch_results = batch.apply(lambda xs: title_stats_vecmap(xs, group_vecs))
-                sim_results.extend(batch_results.tolist())
-        else:
-            # Как раньше — по токенам из модели
-            for i in range(0, len(df), batch_size):
-                if i % 50000 == 0:
-                    print(f"  Processing batch {i}/{len(df)}...")
-                batch = df['tech_list'].iloc[i:i+batch_size]
-                batch_results = batch.apply(lambda xs: title_stats_tokens(xs, w2v))
-                sim_results.extend(batch_results.tolist())
+        print("Computing similarity statistics...")
+        vec_map = group_vecs if args.groups else token_vec_map(w2v, tech_freq.index)
+        pair_sim = PairSimilarity(vec_map)
+        sim_results = [pair_sim.stats(xs) for xs in df['tech_list']]
 
         sim_df = pd.DataFrame(sim_results, columns=['sim_min', 'sim_mean', 'sim_max'])
         del sim_results

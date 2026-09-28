@@ -4,6 +4,14 @@ from typing import List, Dict, Pattern
 def _re(p: str) -> Pattern:
     return re.compile(p, re.IGNORECASE)
 
+
+def compile_patterns(patterns: Dict[str, List[Pattern]]) -> Dict[str, Pattern]:
+    """Один regex на технологию вместо списка: ~110 поисков на текст вместо ~420."""
+    return {
+        tech: re.compile("|".join(f"(?:{p.pattern})" for p in pats), re.IGNORECASE)
+        for tech, pats in patterns.items()
+    }
+
 PATTERNS: Dict[str, List[Pattern]] = {
     "python": [
         _re(r"\bpython\b"), _re(r"\bcpython\b"), _re(r"\bpypy\b"), _re(r"\bpytest\b"),
@@ -468,3 +476,6 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bfuchsia\b"),
     ],
 }
+
+# Объединённые шаблоны для поиска (см. compile_patterns)
+COMPILED_PATTERNS: Dict[str, Pattern] = compile_patterns(PATTERNS)

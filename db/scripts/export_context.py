@@ -1,8 +1,9 @@
 import argparse
 import csv
 import json
+from itertools import groupby
 from pathlib import Path
-from sqlalchemy import and_, select, func
+from sqlalchemy import and_, select
 
 from db.models import Comment, Story
 from db import session_scope
@@ -22,28 +23,36 @@ def parse_args():
     return p.parse_args()
 
 def build_stmt(keep_deleted: bool, limit: int | None):
-    join_cond = Comment.parent == Story.id
+    """
+    Строки (story_id, title, comment_text), упорядоченные по истории и комментарию.
+    Склейка в Python, а не через string_agg/group_concat: порядок внутри агрегата
+    в SQL не гарантирован и менялся от плана запроса, а clean_text на склеенной строке
+    мог вырезать "<...>" через границу двух комментариев.
+    """
+    stories = select(Story.id, Story.title).where(Story.title.isnot(None), Story.title != "")
+    if not keep_deleted:
+        stories = stories.where(is_alive(Story))
+    if limit:
+        stories = stories.order_by(Story.id).limit(limit)
+    stories = stories.subquery()
+
+    join_cond = Comment.parent == stories.c.id
     if not keep_deleted:
         join_cond = and_(join_cond, is_alive(Comment))
 
-    stmt = (
-        select(
-            Story.id,
-            Story.title,
-            # aggregate_strings компилируется в string_agg / group_concat в зависимости от СУБД
-            func.coalesce(func.aggregate_strings(Comment.text, " "), ""),
-        )
+    return (
+        select(stories.c.id, stories.c.title, Comment.text)
         .outerjoin(Comment, join_cond)
-        .where(Story.title.isnot(None), Story.title != "")
-        .group_by(Story.id, Story.title)
-        .order_by(Story.id)
-        .execution_options(stream_results=True)
+        .order_by(stories.c.id, Comment.id)
+        .execution_options(stream_results=True, yield_per=10_000)
     )
-    if not keep_deleted:
-        stmt = stmt.where(is_alive(Story))
-    if limit:
-        stmt = stmt.limit(limit)
-    return stmt
+
+
+def iter_contexts(rows):
+    """Группирует упорядоченные строки по истории: (story_id, title, [очищенные комментарии])."""
+    for (story_id, title), group in groupby(rows, key=lambda r: (r[0], r[1])):
+        comments = [c for c in (clean_text(text) for _, _, text in group) if c]
+        yield story_id, clean_text(title), comments
 
 def main() -> int:
 
@@ -54,22 +63,20 @@ def main() -> int:
 
         with session_scope(args.db) as session, \
                 open(out_path, "w", encoding="utf-8", newline="") as f:
-            result = session.execute(build_stmt(args.keep_deleted, args.limit)).tuples()
+            rows = session.execute(build_stmt(args.keep_deleted, args.limit)).tuples()
             writer = csv.writer(f) if args.format == "csv" else None
             if writer:
                 writer.writerow(["id", "title", "context"])
 
-            for batch in result.partitions(10_000):
-                for story_id, title, context in batch:
-                    if args.format == "txt":
-                        f.write(clean_text(f"{title} {context}") + "\n")
-                    elif args.format == "csv":
-                        writer.writerow([story_id, clean_text(title), clean_text(context)])
-                    else:
-                        f.write(json.dumps(
-                            {"id": story_id, "title": clean_text(title), "context": clean_text(context)},
-                            ensure_ascii=False,
-                        ) + "\n")
+            for story_id, title, comments in iter_contexts(rows):
+                context = " ".join(comments)
+                if args.format == "txt":
+                    f.write(" ".join(p for p in (title, *comments) if p) + "\n")
+                elif args.format == "csv":
+                    writer.writerow([story_id, title, context])
+                else:
+                    f.write(json.dumps({"id": story_id, "title": title, "context": context},
+                                       ensure_ascii=False) + "\n")
 
         print(f"Готово: экспорт заголовков и комментариев в {out_path}")
         return 0

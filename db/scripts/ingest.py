@@ -1,11 +1,10 @@
 import argparse
 import sys
 from pathlib import Path
-from sqlalchemy import create_engine
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from db.session import get_engine
 from hackernews_handler import HNHandler
 
 def parse_args() -> argparse.Namespace:
@@ -41,7 +40,7 @@ def main() -> int:
     args = parse_args()
 
     try:
-        engine = create_engine(args.db, echo=args.echo)
+        engine = get_engine(args.db, echo=args.echo)
     except Exception as e:
         print(f"Ошибка создания engine для '{args.db}': {e}", file=sys.stderr)
         return 1

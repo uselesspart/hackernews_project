@@ -35,6 +35,26 @@ def test_export_context_txt(run_cli, ingested_db, tmp_path):
     ]
 
 
+def test_export_context_cleans_each_comment_separately(run_cli, db_url, tmp_path):
+    # Регрессия: clean_text на склеенной строке вырезал "< ... >" через границу комментариев,
+    # а порядок комментариев зависел от плана запроса. Теперь порядок — по id комментария.
+    from tests.conftest import write_jsonl
+    from hackernews_handler import HNHandler
+    from sqlalchemy import create_engine
+    items = [
+        {"id": 1, "type": "story", "title": "Compare"},
+        {"id": 3, "type": "comment", "parent": 1, "text": "then c &gt; d"},
+        {"id": 2, "type": "comment", "parent": 1, "text": "if a &lt; b"},
+    ]
+    engine = create_engine(db_url)
+    HNHandler(engine).ingest_from_path(write_jsonl(tmp_path / "items.jsonl", items))
+    engine.dispose()
+
+    out = tmp_path / "context.txt"
+    assert run_cli(export_context.main, "-d", db_url, "-o", out) == 0
+    assert _read(out) == ["Compare if a < b then c > d"]
+
+
 def test_export_context_keep_deleted_and_limit(run_cli, ingested_db, tmp_path):
     out = tmp_path / "context.txt"
     assert run_cli(export_context.main, "-d", ingested_db, "-o", out, "--keep-deleted", "--limit", 3) == 0

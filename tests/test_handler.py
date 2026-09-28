@@ -110,6 +110,15 @@ def test_ingest_dedups_within_batch(engine, tmp_path):
         assert s.get(Story, 1).score == 2
 
 
+def test_ingest_large_batch_exceeds_sqlite_variable_limit(engine, tmp_path):
+    # 5000 комментариев x 7 колонок = 35000 параметров > лимита SQLite (32766) для одного INSERT
+    items = [{"id": i, "type": "comment", "parent": 1, "text": f"c{i}"} for i in range(1, 5001)]
+    counts = HNHandler(engine, batch_size=5000).ingest_from_path(write_jsonl(tmp_path / "big.jsonl", items))
+    assert counts == {"stories": 0, "comments": 5000}
+    with Session(engine) as s:
+        assert s.query(Comment).count() == 5000
+
+
 def test_ingest_skips_unknown_types(handler, engine, tmp_path):
     items = [{"id": 100, "type": "job", "title": "Hiring"}, {"id": 101, "type": "poll", "title": "Poll"}]
     counts = handler.ingest_from_path(write_jsonl(tmp_path / "other.jsonl", items))

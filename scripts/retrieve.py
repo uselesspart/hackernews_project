@@ -7,12 +7,29 @@ import os
 import itertools
 from pathlib import Path
 from time import perf_counter
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from hackernews_retriever import HNRetriever
+
+
+def make_session(workers: int) -> requests.Session:
+    """
+    Пул соединений по числу потоков (по умолчанию в requests он 10, и при 32 потоках
+    лишние соединения закрываются после каждого запроса) и повтор при сбоях/429/5xx.
+    """
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=0.5, status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=("GET",))
+    adapter = HTTPAdapter(pool_connections=1, pool_maxsize=workers, max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
 
 def iter_hn_ids(start_id=None, end_id=None, session=None):
     sess = session or requests
@@ -40,14 +57,15 @@ def download_items_streaming(id_iter,
     errors = 0
     total_seen = 0
 
-    with opener(out_path, mode, encoding="utf-8") as f, requests.Session() as session:
+    with opener(out_path, mode, encoding="utf-8") as f, make_session(workers) as session:
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            pending = {}
-            for item_id in itertools.islice(id_iter, workers):
-                pending[ex.submit(retriever.retrieve_item, item_id, session)] = item_id
+            # Держим в работе ~2 задачи на поток, чтобы потоки не простаивали между выдачами
+            pending = {ex.submit(retriever.retrieve_item, item_id, session): item_id
+                       for item_id in itertools.islice(id_iter, workers * 2)}
 
             while pending:
-                for fut in as_completed(list(pending.keys()), timeout=None):
+                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+                for fut in done:
                     item_id = pending.pop(fut)
                     total_seen += 1
                     try:
@@ -58,10 +76,7 @@ def download_items_streaming(id_iter,
                     except Exception:
                         errors += 1
 
-                    try:
-                        next_id = next(id_iter)
-                    except StopIteration:
-                        next_id = None
+                    next_id = next(id_iter, None)
                     if next_id is not None:
                         pending[ex.submit(retriever.retrieve_item, next_id, session)] = next_id
 
@@ -70,7 +85,6 @@ def download_items_streaming(id_iter,
                         rate = saved / elapsed if elapsed > 0 else 0.0
                         print(f"[seen={total_seen}] saved={saved} errors={errors} "
                               f"elapsed={elapsed:.1f}s rate={rate:.1f} items/s")
-                    break
 
     elapsed = perf_counter() - start
     size_bytes = os.path.getsize(out_path)

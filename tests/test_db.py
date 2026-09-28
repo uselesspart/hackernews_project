@@ -33,6 +33,9 @@ def test_upgrade_schema_adds_columns_to_legacy_db(tmp_path):
         cols = {c["name"] for c in insp.get_columns(table)}
         assert {"dead", "deleted"} <= cols
     assert {"tech", "story_tech"} <= set(insp.get_table_names())
+    # Индексы досоздаются и в существующих таблицах
+    assert any(ix["column_names"] == ["parent"] for ix in insp.get_indexes("comment"))
+    assert any(ix["column_names"] == ["tech_id"] for ix in insp.get_indexes("story_tech"))
 
     with engine.connect() as conn:
         assert conn.execute(select(Story.id, Story.title, Story.dead)).all() == [(1, "Legacy", None)]
