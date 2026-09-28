@@ -1,8 +1,8 @@
-import re
 import html
-from typing import Optional
+import re
 
-def clean_text(s: Optional[str]) -> str:
+
+def clean_text(s: str | None) -> str:
     if not s:
         return ""
     s = html.unescape(s)

@@ -1,9 +1,12 @@
 import argparse
 from pathlib import Path
-from utils.lemmatize import load_preserve_words, iter_tokenized_lines
+
+from utils.cli import cli_main
+from utils.lemmatize import iter_tokenized_lines, load_preserve_words
+
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Лемматизация заголовков из TXT → TXT (по строкам).")
+    p = argparse.ArgumentParser(prog="lemmatize_file", description="Лемматизация заголовков из TXT → TXT (по строкам).")
     p.add_argument("--input", "-i", type=Path, required=True,
                     help="Входной TXT (по одному заголовку на строку)")
     p.add_argument("--output", "-o", type=Path, required=True,
@@ -22,19 +25,17 @@ def parse_args():
                     help="Дополнительные слова для сохранения (не лемматизировать)")
     return p.parse_args()
 
+@cli_main
 def main():
     args = parse_args()
 
     num_token = None if args.num_token.lower() == "none" else args.num_token
-    
     preserve_words = load_preserve_words(args.preserve_words)
-    
-    for word in args.add_preserve:
-        preserve_words.add(word.lower())
-    
-    print(f"Preserving {len(preserve_words)} words from lemmatization")
+    preserve_words.update(word.lower() for word in args.add_preserve)
+
+    print(f"Не лемматизируются {len(preserve_words)} слов")
     if args.preserve_words or args.add_preserve:
-        print(f"Examples: {sorted(list(preserve_words))[:10]}")
+        print(f"Примеры: {sorted(preserve_words)[:10]}")
 
     with args.output.open("w", encoding="utf-8") as out:
         for tokens in iter_tokenized_lines(
@@ -47,7 +48,8 @@ def main():
         ):
             out.write((" ".join(tokens) if tokens else "") + "\n")
 
-    print(f"Processed {args.input} -> {args.output}")
+    print(f"Готово: {args.input} -> {args.output}")
+    return 0
 
 
 if __name__ == "__main__":

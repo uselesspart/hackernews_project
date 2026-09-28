@@ -1,15 +1,18 @@
-import re
-from typing import Dict, List, Iterable, Set
 import argparse
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+import re
+from collections.abc import Iterable
 
+from sqlalchemy import insert, select
+from sqlalchemy.orm import Session
+
+from analytics.embeddings.patterns import COMPILED_PATTERNS, PATTERNS, compile_patterns
 from db import session_scope
-from db.models import Story, Tech
-from analytics.embeddings.patterns import PATTERNS
+from db.models import Story, Tech, story_tech
+from utils.cli import cli_main
 
-def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]:
-    existing: Dict[str, Tech] = {
+
+def ensure_techs(session: Session, tech_names: Iterable[str]) -> dict[str, Tech]:
+    existing: dict[str, Tech] = {
         t.name: t for t in session.execute(select(Tech)).scalars().all()
     }
     to_create = [Tech(name=name) for name in tech_names if name not in existing]
@@ -21,73 +24,75 @@ def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]
     return existing
 
 
-def match_techs(title: str, patterns: Dict[str, List[re.Pattern]]) -> Set[str]:
+def _compiled(patterns: dict[str, list[re.Pattern]]) -> dict[str, re.Pattern]:
+    return COMPILED_PATTERNS if patterns is PATTERNS else compile_patterns(patterns)
+
+
+def match_techs(title: str, patterns: dict[str, list[re.Pattern]]) -> set[str]:
     if not title:
         return set()
-    text = title.lower()
-    hits: Set[str] = set()
-    for tech, pats in patterns.items():
-        for pat in pats:
-            if pat.search(text):
-                hits.add(tech)
-                break
-    return hits
+    return {tech for tech, pat in _compiled(patterns).items() if pat.search(title)}
 
 
 def classify_stories(session: Session,
-                     patterns: Dict[str, List[re.Pattern]] = PATTERNS,
+                     patterns: dict[str, list[re.Pattern]] = PATTERNS,
                      batch_size: int = 1000,
                      dry_run: bool = False) -> int:
-    tech_by_name = ensure_techs(session, patterns.keys())
+    tech_id_by_name = {name: t.id for name, t in ensure_techs(session, patterns.keys()).items()}
+    compiled = _compiled(patterns)
+
+    existing: dict[int, set[int]] = {}
+    for story_id, tech_id in session.execute(select(story_tech.c.story_id, story_tech.c.tech_id)):
+        existing.setdefault(story_id, set()).add(tech_id)
 
     updated = 0
-    stmt = select(Story).options(selectinload(Story.techs)).execution_options(yield_per=batch_size)
+    last_id = None
+    while True:
+        # Постранично по id: не держим открытый курсор чтения, пока пишем в ту же БД
+        stmt = select(Story.id, Story.title).order_by(Story.id).limit(batch_size)
+        if last_id is not None:
+            stmt = stmt.where(Story.id > last_id)
+        rows = session.execute(stmt).all()
+        if not rows:
+            break
+        last_id = rows[-1].id
 
-    for story in session.execute(stmt).scalars():
-        found = match_techs(story.title or "", patterns)
-        if not found:
-            continue
-
-        existing_names = {t.name for t in story.techs}
-        to_add = [name for name in found if name not in existing_names]
-        if not to_add:
-            continue
-
-        if dry_run:
-            print(f"Story {story.id}: +{to_add}")
+        links = []
+        for story_id, title in rows:
+            if not title:
+                continue
+            have = existing.get(story_id, set())
+            new_ids = [tech_id_by_name[tech] for tech, pat in compiled.items()
+                       if pat.search(title) and tech_id_by_name[tech] not in have]
+            if not new_ids:
+                continue
             updated += 1
-            continue
+            if dry_run:
+                names = [name for name, tid in tech_id_by_name.items() if tid in new_ids]
+                print(f"Story {story_id}: +{names}")
+                continue
+            links.extend({"story_id": story_id, "tech_id": tid} for tid in new_ids)
 
-        for name in to_add:
-            story.techs.append(tech_by_name[name])
-
-        updated += 1
-        if updated % batch_size == 0:
+        if links:
+            session.execute(insert(story_tech), links)
             session.commit()
-
-    if not dry_run:
-        session.commit()
 
     return updated
 
 def parse_args():
     p = argparse.ArgumentParser(
-        prog="export_titles",
-        description="Выгрузка заголовков Story из БД в файл (txt/csv/jsonl)"
+        prog="classify_tech",
+        description="Привязка историй к технологиям по шаблонам из patterns.py"
     )
     p.add_argument("-d", "--db", required=True, help="DB URL (например, sqlite:///hn.db)")
     return p.parse_args()
 
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        with session_scope(args.db) as session:
-            changed = classify_stories(session, dry_run=False)
-            print("Обновлено историй:", changed)
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
+    with session_scope(args.db) as session:
+        print("Обновлено историй:", classify_stories(session))
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

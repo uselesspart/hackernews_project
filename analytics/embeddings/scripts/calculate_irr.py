@@ -1,42 +1,21 @@
-import re
 import argparse
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from gensim.models import Word2Vec
+from collections import Counter
 from itertools import combinations
-from sklearn.linear_model import PoissonRegressor
-from sklearn.preprocessing import StandardScaler
-import warnings
-warnings.filterwarnings('ignore')
-from db.queries import iter_tech_names
-from db.session import session_scope
-from analytics.embeddings.patterns import PATTERNS
-from utils.groups import categories as RAW_CATEGORIES  # <-- прямой импорт категорий
 
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+from gensim.models import Word2Vec
 
-COMPILED: dict[str, re.Pattern] = {
-    canon: re.compile("|".join(p.pattern for p in plist), re.IGNORECASE)
-    for canon, plist in PATTERNS.items()
-}
+from analytics.embeddings.patterns import COMPILED_PATTERNS
+from utils.cli import cli_main
+from utils.groups import categories as RAW_CATEGORIES
+from utils.groups import normalize_categories
+from utils.vectors import cosine
 
-
-def normalize_token(name: str) -> str:
-    return name.strip().lower().replace(" ", "_")
-
-
-def normalize_categories_dict(raw: dict) -> dict:
-    norm = {}
-    for g, arr in raw.items():
-        seen = set()
-        norm_tokens = []
-        for x in arr:
-            t = normalize_token(x)
-            if t not in seen:
-                seen.add(t)
-                norm_tokens.append(t)
-        norm[str(g)] = norm_tokens
-    return norm
+MAX_TECHS_PER_TITLE = 3
+MIN_FREQ = 5
+TOP_N = 50
 
 
 def build_group_maps(w2v: Word2Vec, raw_categories: dict):
@@ -47,336 +26,247 @@ def build_group_maps(w2v: Word2Vec, raw_categories: dict):
       - group_vecs: dict[group -> np.ndarray] средний вектор группы
     """
     kv = w2v.wv
-    cats = normalize_categories_dict(raw_categories)
-
-    group_to_tokens: dict[str, list[str]] = {}
-    for g, toks in cats.items():
-        present = [t for t in toks if t in kv.key_to_index]
-        if present:
-            group_to_tokens[g] = present
-
-    # Вектора групп
-    group_vecs: dict[str, np.ndarray] = {}
-    for g, toks in group_to_tokens.items():
-        vecs = np.stack([kv.get_vector(t) for t in toks])
-        group_vecs[g] = vecs.mean(axis=0)
-
-    # Обратный маппинг: токен -> группы
+    group_to_tokens = {
+        g: present
+        for g, toks in normalize_categories(raw_categories).items()
+        if (present := [t for t in toks if t in kv.key_to_index])
+    }
+    group_vecs = {g: np.stack([kv.get_vector(t) for t in toks]).mean(axis=0)
+                  for g, toks in group_to_tokens.items()}
     token_to_groups: dict[str, list[str]] = {}
     for g, toks in group_to_tokens.items():
         for t in toks:
             token_to_groups.setdefault(t, []).append(g)
-
     return group_to_tokens, token_to_groups, group_vecs
 
 
 def extract_tech_regex(text: str) -> list[str]:
+    """Технологии заголовка в порядке первого упоминания, не более MAX_TECHS_PER_TITLE."""
     if not isinstance(text, str) or not text:
         return []
-    hits = []
-    for canon, pat in COMPILED.items():
-        m = pat.search(text)
-        if m:
-            hits.append((canon, m.start()))
-    hits_sorted = [canon for canon, _ in sorted(hits, key=lambda x: x[1])]
-    return list(dict.fromkeys(hits_sorted))[:3]
+    # Стабильная сортировка по позиции: при равных позициях сохраняется порядок PATTERNS
+    hits = sorted(((m.start(), tech) for tech, pat in COMPILED_PATTERNS.items() if (m := pat.search(text))),
+                  key=lambda hit: hit[0])
+    return list(dict.fromkeys(tech for _, tech in hits))[:MAX_TECHS_PER_TITLE]
 
 
-def cos(a, b):
-    """Compute cosine similarity with safety checks"""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    sim = np.dot(a, b) / (norm_a * norm_b)
-    sim = np.clip(sim, -1.0, 1.0)
-    return float(sim)
+class PairSimilarity:
+    """
+    min/mean/max косинусной близости между технологиями заголовка.
+    Технологий ~100, поэтому близость каждой пары считается один раз и кэшируется,
+    а не пересчитывается для каждого из сотен тысяч заголовков.
+    """
+
+    def __init__(self, vec_map: dict[str, np.ndarray]):
+        self.vec_map = {k: v for k, v in vec_map.items() if np.all(np.isfinite(v))}
+        self._cache: dict[tuple[str, str], float] = {}
+
+    def _sim(self, a: str, b: str) -> float:
+        key = (a, b)
+        if key not in self._cache:
+            self._cache[key] = cosine(self.vec_map[a], self.vec_map[b])
+        return self._cache[key]
+
+    def stats(self, xs: list[str]) -> tuple[float, float, float]:
+        present = [x for x in xs if x in self.vec_map]
+        sims = [self._sim(a, b) for i, a in enumerate(present) for b in present[i + 1:]]
+        sims = [s for s in sims if np.isfinite(s)]
+        if not sims:
+            return (0.0, 0.0, 0.0)
+        return (float(min(sims)), float(np.mean(sims)), float(max(sims)))
 
 
-def title_stats_tokens(xs: list[str], w2v: Word2Vec):
-    """Схожесть по токенам через модель"""
-    if not xs:
-        return (0.0, 0.0, 0.0)
+def token_vec_map(w2v: Word2Vec, tokens) -> dict[str, np.ndarray]:
     kv = w2v.wv
-    vecs = []
-    for x in xs:
-        if x in kv:
-            try:
-                vec = kv[x]
-                if not np.any(np.isnan(vec)) and not np.any(np.isinf(vec)):
-                    vecs.append(vec)
-            except:
-                continue
-    if len(vecs) <= 1:
-        return (0.0, 0.0, 0.0)
-    sims = []
-    for i in range(len(vecs)):
-        for j in range(i + 1, len(vecs)):
-            sim = cos(vecs[i], vecs[j])
-            if not np.isnan(sim) and not np.isinf(sim):
-                sims.append(sim)
-    if not sims:
-        return (0.0, 0.0, 0.0)
-    return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
+    return {t: kv[t] for t in tokens if t in kv}
 
 
-def title_stats_vecmap(xs: list[str], vec_map: dict[str, np.ndarray]):
-    """Схожесть по предвычисленным векторам (для групп)"""
-    if not xs:
-        return (0.0, 0.0, 0.0)
-    vecs = []
-    for x in xs:
-        v = vec_map.get(x)
-        if v is not None and not np.any(np.isnan(v)) and not np.any(np.isinf(v)):
-            vecs.append(v)
-    if len(vecs) <= 1:
-        return (0.0, 0.0, 0.0)
-    sims = []
-    for i in range(len(vecs)):
-        for j in range(i + 1, len(vecs)):
-            sim = cos(vecs[i], vecs[j])
-            if not np.isnan(sim) and not np.isinf(sim):
-                sims.append(sim)
-    if not sims:
-        return (0.0, 0.0, 0.0)
-    return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
+def indicator_features(tech_lists: pd.Series, top_tech: list[str],
+                       top_pairs: list[tuple[str, str]]) -> dict[str, pd.Series]:
+    """has_<tech> и has_pair_<a>__<b> одним проходом вместо apply на каждый признак."""
+    # Пары могут включать технологии за пределами топа — им тоже нужны индикаторы
+    needed = list(dict.fromkeys([*top_tech, *(t for pair in top_pairs for t in pair)]))
+    exploded = tech_lists.explode().dropna()
+    exploded = exploded[exploded.isin(needed)]
+    dummies = pd.crosstab(exploded.index, exploded).clip(upper=1)
+    dummies = dummies.reindex(index=tech_lists.index, columns=needed, fill_value=0).astype(np.int8)
+
+    features = {f'has_{t}': dummies[t] for t in top_tech}
+    for a, b in top_pairs:
+        features[f'has_pair_{a}__{b}'] = (dummies[a] & dummies[b]).astype(np.int8)
+    return features
+
+
+def linearly_dependent_columns(X: pd.DataFrame) -> list[str]:
+    """
+    Жадно отбирает столбцы слева направо и возвращает те, что линейно выражаются
+    через уже отобранные (как NA-коэффициенты в R). Работает по X'X (p x p), так что дёшево.
+    """
+    xtx = X.T.to_numpy() @ X.to_numpy()
+    kept: list[int] = []
+    dependent: list[str] = []
+    for j, name in enumerate(X.columns):
+        idx = [*kept, j]
+        if np.linalg.matrix_rank(xtx[np.ix_(idx, idx)]) == len(idx):
+            kept.append(j)
+        else:
+            dependent.append(name)
+    return dependent
+
+
+def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
+    """
+    GLM для числа комментариев. По умолчанию — отрицательная биномиальная (NB2):
+    число комментариев сильно сверхдисперсно, и у Пуассона ошибки занижены.
+    """
+    X = sm.add_constant(X, has_constant="add")
+    dependent = linearly_dependent_columns(X)
+    if dependent:
+        print(f"Warning: матрица признаков вырождена, исключены линейно зависимые признаки: "
+              f"{', '.join(dependent)}")
+        X = X.drop(columns=dependent)
+    poisson = sm.GLM(y, X, family=sm.families.Poisson())
+    if family == "poisson":
+        # Робастные (sandwich) ошибки не требуют предположения var = mean
+        return poisson.fit(cov_type="HC0"), None
+
+    mu = poisson.fit().mu
+    # Оценка alpha по Cameron & Trivedi: ((y - mu)^2 - y) / mu = alpha * mu + e (МНК без константы)
+    alpha = max(float(np.sum((y - mu) ** 2 - y) / np.sum(mu ** 2)), 1e-8)
+    return sm.GLM(y, X, family=sm.families.NegativeBinomial(alpha=alpha)).fit(), alpha
+
+
+def load_titles(path: str, max_rows: int, sample: int | None) -> pd.DataFrame:
+    df = pd.read_csv(path, usecols=['title', 'descendants'])
+    print(f"Загружено строк: {len(df)}")
+    df = df[df['descendants'] >= 0]
+    print(f"С известным числом комментариев: {len(df)}")
+    if len(df) > max_rows:
+        print(f"Случайная выборка {max_rows} строк из {len(df)} (--max-rows)")
+        df = df.sample(n=max_rows, random_state=42)
+    if sample:
+        df = df.sample(n=min(sample, len(df)), random_state=42)
+    # После фильтрации/выборки индекс идёт с пропусками; признаки ниже собираются как
+    # по меткам (Series), так и по позиции (списки), поэтому индекс должен быть позиционным.
+    return df.reset_index(drop=True)
+
+
+def to_groups(tech_lists: pd.Series, w2v: Word2Vec):
+    """Заменяет технологии их группами из utils.groups; возвращает (списки групп, векторы групп)."""
+    _, token_to_groups, group_vecs = build_group_maps(w2v, RAW_CATEGORIES)
+
+    def map_tokens(xs: list[str]) -> list[str]:
+        groups = (g for t in xs for g in token_to_groups.get(t, []) if g in group_vecs)
+        return list(dict.fromkeys(groups))
+
+    return tech_lists.apply(map_tokens), group_vecs
+
+
+def top_labels(tech_lists: pd.Series) -> tuple[pd.Series, list[str], list[tuple[str, str]]]:
+    labels = [t for xs in tech_lists for t in xs]
+    if not labels:
+        raise ValueError("Не удалось извлечь ни одной технологии/группы из заголовков.")
+    freq = pd.Series(labels).value_counts()  # равные частоты — в порядке первого появления
+    top_tech = freq[freq >= MIN_FREQ].index.tolist()[:TOP_N]
+    pair_freq = Counter(pair for xs in tech_lists for pair in combinations(sorted(xs), 2))
+    top_pairs = [p for p, c in pd.Series(dict(pair_freq), dtype=int).sort_values(ascending=False).items()
+                 if c >= MIN_FREQ][:TOP_N]
+    return freq, top_tech, top_pairs
+
+
+def build_features(tech_lists: pd.Series, top_tech, top_pairs, vec_map) -> pd.DataFrame:
+    features = indicator_features(tech_lists, top_tech, top_pairs)
+
+    pair_sim = PairSimilarity(vec_map)
+    sims = pd.DataFrame([pair_sim.stats(xs) for xs in tech_lists], columns=['sim_min', 'sim_mean', 'sim_max'])
+    sims = sims.replace([np.inf, -np.inf], 0.0).fillna(0.0)
+    features['sim_min'] = sims['sim_min'].astype(np.float32)
+    features['sim_mean'] = sims['sim_mean'].astype(np.float32)
+
+    # Общее число технологий = сумма has_* + технологии вне топа. С has_* в модели
+    # полный techs_count был бы (почти) линейно зависим от них и делал бы
+    # матрицу вырожденной, поэтому контролируем только технологии вне топа.
+    top_set = set(top_tech)
+    features['other_techs_count'] = tech_lists.apply(lambda xs: sum(t not in top_set for t in xs)).astype(np.int8)
+
+    columns = ['other_techs_count', 'sim_min', 'sim_mean',
+               *(f'has_{t}' for t in top_tech), *(f'has_pair_{a}__{b}' for a, b in top_pairs)]
+    X = pd.DataFrame(features)[columns].astype(np.float64)
+    return X.replace([np.inf, -np.inf], 0.0).fillna(0.0)
+
+
+def irr_table(result) -> pd.DataFrame:
+    ci = result.conf_int(alpha=0.05)
+    coef_df = pd.DataFrame({
+        'feature': result.params.index,
+        'coef': result.params.values,
+        'se': result.bse.values,
+        'pval': result.pvalues.values,
+        'conf_low': ci[0].values,
+        'conf_high': ci[1].values,
+    })
+    coef_df['IRR'] = np.exp(coef_df['coef'])
+    coef_df['IRR_low'] = np.exp(coef_df['conf_low'])
+    coef_df['IRR_high'] = np.exp(coef_df['conf_high'])
+    return coef_df
 
 
 def parse_args():
     p = argparse.ArgumentParser(
         prog="calculate_irr",
-        description="Calculate IRR coefficients"
+        description="IRR технологий: во сколько раз упоминание технологии меняет ожидаемое число комментариев"
     )
-    p.add_argument("-m", "--model", required=True, help="Path to model")
-    p.add_argument("-i", "--input", required=True, help="Path to input file")
-    p.add_argument("-o", "--output", required=True, help="Path to output file")
-    p.add_argument("--db", help="Database connection string", default=None)
-    p.add_argument("--limit", type=int, help="Limit for tech names", default=None)
-    p.add_argument("--sample", type=int, help="Sample N rows (for testing)", default=None)
-    p.add_argument("--max-rows", type=int, help="Maximum rows to process", default=500000)
-
-    # Новый флаг групп
+    p.add_argument("-m", "--model", required=True, help="Путь к модели Word2Vec (.model)")
+    p.add_argument("-i", "--input", required=True, help="CSV с метаданными статей (export_stories_meta)")
+    p.add_argument("-o", "--output", required=True, help="Путь к выходному CSV с коэффициентами")
+    p.add_argument("--sample", type=int, default=None, help="Случайная выборка N строк (для отладки)")
+    p.add_argument("--max-rows", type=int, default=500000, help="Максимум строк (по умолчанию 500000)")
+    p.add_argument("--family", choices=["negbin", "poisson"], default="negbin",
+                   help="Семейство GLM: negbin (по умолчанию) или poisson с робастными ошибками")
     p.add_argument("--groups", action="store_true",
                    help="Агрегировать технологии в группы из utils.groups.categories")
     return p.parse_args()
 
 
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        print("Loading data...")
-        df = pd.read_csv(args.input, usecols=['title', 'descendants'])
+    df = load_titles(args.input, args.max_rows, args.sample)
+    w2v = Word2Vec.load(args.model)
 
-        print(f"Original data: {len(df)} rows")
-        print(f"Descendants range: min={df['descendants'].min()}, max={df['descendants'].max()}")
+    print("Извлечение технологий из заголовков...")
+    tech_lists = df['title'].apply(extract_tech_regex)
+    if args.groups:
+        tech_lists, vec_map = to_groups(tech_lists, w2v)
 
-        # Filter out invalid descendants values
-        df = df[df['descendants'] >= 0].copy()
-        print(f"After filtering negative descendants: {len(df)} rows")
+    freq, top_tech, top_pairs = top_labels(tech_lists)
+    print(f"В модели: {len(top_tech)} {'групп' if args.groups else 'технологий'}, {len(top_pairs)} пар")
+    if not args.groups:
+        vec_map = token_vec_map(w2v, freq.index)
 
-        # Apply max rows limit to avoid memory issues
-        if len(df) > args.max_rows:
-            print(f"Sampling {args.max_rows} rows from {len(df)} to avoid memory issues...")
-            df = df.sample(n=args.max_rows, random_state=42).copy()
+    X = build_features(tech_lists, top_tech, top_pairs, vec_map)
+    y = df['descendants'].to_numpy(dtype=np.float64)
 
-        # Sample if requested
-        if args.sample:
-            print(f"Sampling {args.sample} rows...")
-            df = df.sample(n=min(args.sample, len(df)), random_state=42).copy()
+    # Постоянный признак (например, sim_* когда нет заголовков с 2+ технологиями)
+    # неотличим от константы и даёт бессмысленные ошибки
+    constant_cols = [c for c in X.columns if X[c].nunique() <= 1]
+    if constant_cols:
+        print(f"Исключены постоянные признаки: {', '.join(constant_cols)}")
+        X = X.drop(columns=constant_cols)
 
-        print(f"Processing {len(df)} rows...")
+    print(f"Строк: {len(X)}, признаков: {X.shape[1]}; "
+          f"комментарии: среднее={y.mean():.2f}, дисперсия={y.var():.2f}")
+    result, alpha = fit_count_model(X, y, args.family)
+    if alpha is not None:
+        print(f"Оценка сверхдисперсии NB: alpha={alpha:.4f}")
 
-        print("Loading Word2Vec model...")
-        w2v = Word2Vec.load(args.model)
-
-        # (Необязательная) подкачка сидов из БД — как и раньше
-        try:
-            seed_tech = []
-            with session_scope(args.db) as session:
-                rows = iter_tech_names(session, limit=args.limit)
-                for _, name in rows:
-                    seed_tech.append(name)
-        except:
-            seed_tech = ['python','javascript','react','kubernetes','docker','postgresql',
-                'redis','csharp','dotnet','java','go','rust','swift','android']
-
-        print("Extracting technologies from titles...")
-        df['tech_list'] = df['title'].apply(extract_tech_regex)
-        df.drop(columns=['title'], inplace=True)
-        df['n_tech'] = df['tech_list'].str.len()
-
-        # Если включён режим групп — маппим технологии в группы и заменяем списки
-        group_vecs = None
-        if args.groups:
-            print("Grouping technologies into categories...")
-            _, token_to_groups, group_vecs = build_group_maps(w2v, RAW_CATEGORIES)
-
-            def map_tokens_to_groups(xs: list[str]) -> list[str]:
-                out = []
-                for t in xs:
-                    gs = token_to_groups.get(t, [])
-                    out.extend(gs)
-                # дедуп, сохранение порядка
-                seen = set()
-                dedup = []
-                for g in out:
-                    if g not in seen and g in group_vecs:
-                        seen.add(g)
-                        dedup.append(g)
-                return dedup
-
-            df['tech_list'] = df['tech_list'].apply(map_tokens_to_groups)
-            df['n_tech'] = df['tech_list'].str.len()
-            print("Grouping complete.")
-
-        print("Computing technology frequencies...")
-        all_labels = [t for xs in df['tech_list'] for t in xs]
-        if not all_labels:
-            raise ValueError("Не удалось извлечь ни одной технологии/группы из заголовков.")
-        tech_freq = pd.Series(all_labels).value_counts()
-        del all_labels
-
-        top_tech = tech_freq[tech_freq >= 5].index.tolist()[:50]
-        print(f"Found {len(top_tech)} top {'groups' if args.groups else 'technologies'}")
-
-        print("Computing pair frequencies...")
-        pair_counts: dict[tuple[str, str], int] = {}
-        for xs in df['tech_list']:
-            for a, b in combinations(sorted(xs), 2):
-                pair_counts[(a, b)] = pair_counts.get((a, b), 0) + 1
-        pair_df = pd.Series(pair_counts).sort_values(ascending=False)
-        top_pairs = [p for p, c in pair_df.items() if c >= 5][:50]
-        print(f"Found {len(top_pairs)} top pairs")
-        del pair_counts, pair_df
-
-        print("Building feature columns...")
-        feature_data: dict[str, pd.Series] = {}
-
-        for t in top_tech:
-            feature_data[f'has_{t}'] = df['tech_list'].apply(lambda xs: t in xs).astype(np.int8)
-
-        for a, b in top_pairs:
-            feature_data[f'has_pair_{a}__{b}'] = df['tech_list'].apply(
-                lambda xs, aa=a, bb=b: (aa in xs and bb in xs)
-            ).astype(np.int8)
-
-        print("Computing similarity statistics (this may take a while)...")
-        batch_size = 1000
-        sim_results = []
-
-        if args.groups:
-            # Используем предвычисленные векторы групп
-            for i in range(0, len(df), batch_size):
-                if i % 50000 == 0:
-                    print(f"  Processing batch {i}/{len(df)}...")
-                batch = df['tech_list'].iloc[i:i+batch_size]
-                batch_results = batch.apply(lambda xs: title_stats_vecmap(xs, group_vecs))
-                sim_results.extend(batch_results.tolist())
-        else:
-            # Как раньше — по токенам из модели
-            for i in range(0, len(df), batch_size):
-                if i % 50000 == 0:
-                    print(f"  Processing batch {i}/{len(df)}...")
-                batch = df['tech_list'].iloc[i:i+batch_size]
-                batch_results = batch.apply(lambda xs: title_stats_tokens(xs, w2v))
-                sim_results.extend(batch_results.tolist())
-
-        sim_df = pd.DataFrame(sim_results, columns=['sim_min', 'sim_mean', 'sim_max'])
-        del sim_results
-
-        sim_df = sim_df.fillna(0.0).replace([np.inf, -np.inf], 0.0)
-
-        feature_data['sim_min'] = sim_df['sim_min'].astype(np.float32)
-        feature_data['sim_mean'] = sim_df['sim_mean'].astype(np.float32)
-        feature_data['sim_max'] = sim_df['sim_max'].astype(np.float32)
-        del sim_df
-
-        feature_data['techs_count'] = df['n_tech'].astype(np.int8)
-
-        features_df = pd.DataFrame(feature_data, index=df.index)
-        del feature_data
-
-        print("Preparing regression features...")
-        feature_cols = ['techs_count', 'sim_min', 'sim_mean'] + \
-                       [f'has_{t}' for t in top_tech] + \
-                       [f'has_pair_{a}__{b}' for (a, b) in top_pairs]
-
-        X = features_df[feature_cols].values
-        y = df['descendants'].values
-
-        # Validation
-        print("Validating data...")
-        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
-
-        valid_mask = (y >= 0) & np.isfinite(y)
-        if not valid_mask.all():
-            print(f"Removing {(~valid_mask).sum()} rows with invalid y values")
-            X = X[valid_mask]
-            y = y[valid_mask]
-
-        print(f"Final dataset: {len(X)} rows, {X.shape[1]} features")
-        print(f"X stats: min={X.min():.4f}, max={X.max():.4f}")
-        print(f"y stats: min={y.min():.2f}, max={y.max():.2f}, mean={y.mean():.2f}")
-
-        print("Fitting Poisson regression (sklearn)...")
-        model = PoissonRegressor(alpha=0.1, max_iter=300, verbose=1)
-        model.fit(X, y)
-
-        print("Computing IRR and confidence intervals...")
-        coefs = model.coef_
-        intercept = model.intercept_
-
-        all_coefs = np.concatenate([[intercept], coefs])
-        feature_names = ['const'] + feature_cols
-
-        predictions = model.predict(X)
-        variance = predictions  # For Poisson, variance = mean
-        weights = 1.0 / (variance + 1e-10)
-
-        X_with_const = np.column_stack([np.ones(len(X)), X])
-        hessian_approx = X_with_const.T @ (weights[:, None] * X_with_const)
-
-        try:
-            cov_matrix = np.linalg.inv(hessian_approx)
-            se = np.sqrt(np.diag(cov_matrix))
-        except:
-            print("Warning: Could not compute standard errors, using approximation")
-            se = np.abs(all_coefs) * 0.1  # Rough approximation
-
-        z_scores = all_coefs / (se + 1e-10)
-        from scipy import stats
-        p_values = 2 * (1 - stats.norm.cdf(np.abs(z_scores)))
-
-        conf_low = all_coefs - 1.96 * se
-        conf_high = all_coefs + 1.96 * se
-
-        coef_df = pd.DataFrame({
-            'feature': feature_names,
-            'coef': all_coefs,
-            'se': se,
-            'pval': p_values,
-            'conf_low': conf_low,
-            'conf_high': conf_high,
-        })
-        coef_df['IRR'] = np.exp(coef_df['coef'])
-        coef_df['IRR_low'] = np.exp(coef_df['conf_low'])
-        coef_df['IRR_high'] = np.exp(coef_df['conf_high'])
-
-        print(f"Saving results to {args.output}...")
-        coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
-
-        print("Done!")
-        print(f"\nTop 10 features by IRR:")
-        top_features = coef_df[coef_df['feature'] != 'const'].nlargest(10, 'IRR')
-        print(top_features[['feature', 'IRR', 'pval']].to_string(index=False))
-
-        return 0
-
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return 1
+    coef_df = irr_table(result)
+    coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
+    print(f"Готово: коэффициенты сохранены в {args.output}")
+    print("\nТоп-10 признаков по IRR:")
+    top_features = coef_df[coef_df['feature'] != 'const'].nlargest(10, 'IRR')
+    print(top_features[['feature', 'IRR', 'pval']].to_string(index=False))
+    return 0
 
 
 if __name__ == "__main__":

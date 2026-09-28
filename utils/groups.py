@@ -193,3 +193,15 @@ categories = {
         "firebird", "db2", "vertica", "greenplum"
     ],
 }
+
+def normalize_token(name: str) -> str:
+    """Имя технологии/группы -> токен словаря модели: "Stable Diffusion" -> "stable_diffusion"."""
+    return name.strip().lower().replace(" ", "_")
+
+
+def normalize_categories(raw: dict) -> dict[str, list[str]]:
+    """Нормализует токены групп и убирает дубликаты, сохраняя порядок."""
+    return {
+        str(group): list(dict.fromkeys(normalize_token(t) for t in tokens))
+        for group, tokens in raw.items()
+    }

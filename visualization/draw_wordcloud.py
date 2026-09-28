@@ -1,9 +1,13 @@
-import re
 import argparse
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from utils.clean_text import clean_text
 from collections import Counter
+from pathlib import Path
+
+from wordcloud import WordCloud
+
+from utils.clean_text import clean_text
+from utils.cli import cli_main
+from utils.io import read_nonempty_lines
+from visualization._common import plt, save_figure
 
 EN_STOP = {
     #html
@@ -64,61 +68,46 @@ EN_STOP = {
     "part","bit","way","ways","point","points"
 }
 
-URL_RE = re.compile(r"https?://\S+|www\.\S+")
-CODE_RE = re.compile(r"`[^`]+`|```.*?```", re.S)
-HTML_RE = re.compile(r"<[^>]+>")
-NON_ALPHA_RE = re.compile(r"[^a-zA-Zа-яА-Я0-9\- ]+")
-
-
 def parse_args():
     p = argparse.ArgumentParser(
-        prog="export_titles",
+        prog="draw_wordcloud",
         description="Отрисовка облака слов для технологии"
     )
-    p.add_argument("-i", "--input", required=True, help="Путь к входному файлу")
-    p.add_argument("-o", "--output", required=True, help="Путь к выходному файлу")
-    p.add_argument("--extra", help="Дополнительные слова, которые не нужно учитывать")
+    p.add_argument("-i", "--input", required=True, help="Файл комментариев технологии (например, rust_5_lem.txt)")
+    p.add_argument("-o", "--output", required=True, help="Путь к выходному изображению")
+    p.add_argument("--extra", help="Дополнительное слово, которое не нужно учитывать (обычно сама технология)")
     return p.parse_args()
+
 
 def tokenize(text: str):
     return [w for w in text.split() if len(w) > 2]
 
-def build_frequencies(comments: list[str], extra_stop: set[str] = None):
-    stop = EN_STOP
-    if extra_stop:
-        stop |= extra_stop
+
+def build_frequencies(comments: list[str], extra_stop: set[str] | None = None):
+    # Новое множество, а не |= : иначе стоп-слова копились бы в глобальном EN_STOP
+    stop = EN_STOP | (extra_stop or set())
     counter = Counter()
     for c in comments:
-        tokens = [w for w in tokenize(clean_text(c)) if w not in stop]
-        counter.update(tokens)
+        counter.update(w for w in tokenize(clean_text(c)) if w not in stop)
     return dict(counter)
 
+
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        words = []
-        with open(args.input, 'r') as f:
-            for line in f:
-                words.append(line.strip())
-        extra_stop = {args.extra}
-        freqs = build_frequencies(words, extra_stop=extra_stop)
-        wordcloud = WordCloud(
-            width=800,
-            height=400,
-            background_color='white',
-            colormap='viridis'
-            ).generate_from_frequencies(freqs)
-        plt.figure(figsize=(10, 5))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        plt.title("Example Word Cloud")
-        plt.tight_layout()
-        plt.savefig(args.output, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to {args.output}")
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
+    extra_stop = {args.extra.lower()} if args.extra else set()
+    freqs = build_frequencies(read_nonempty_lines(args.input), extra_stop=extra_stop)
+    wordcloud = WordCloud(width=800, height=400, background_color='white',
+                          colormap='viridis').generate_from_frequencies(freqs)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis('off')
+    # "rust_5_lem.txt" -> "rust"
+    ax.set_title(Path(args.input).stem.split("_")[0])
+    fig.tight_layout()
+    save_figure(fig, args.output)
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

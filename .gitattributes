@@ -1,0 +1,5 @@
+# cmd.exe некорректно разбирает .bat с LF-окончаниями (особенно с UTF-8 и блоками в скобках)
+*.bat text eol=crlf
+# bash не понимает CRLF ("$'\r': command not found")
+*.sh text eol=lf
+*.py text eol=lf

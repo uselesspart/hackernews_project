@@ -1,0 +1,30 @@
+[project]
+name = "hackernews-analytics"
+version = "0.1.0"
+description = "NLP-анализ обсуждения технологий на Hacker News"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "spacy: тест требует модель spaCy en_core_web_sm (пропускается, если её нет)",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["venv"]
+
+[tool.ruff.lint]
+# E/W — pycodestyle, F — pyflakes, I — порядок импортов, B — типичные ошибки,
+# UP — современный синтаксис, SIM — упрощения
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = [
+    "B905",  # zip() без strict=: во многих местах длины заведомо равны
+    "SIM108", # тернарный оператор вместо if/else — не всегда читабельнее
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["analytics", "db", "scripts", "utils", "visualization", "hackernews_handler", "hackernews_retriever", "tests"]

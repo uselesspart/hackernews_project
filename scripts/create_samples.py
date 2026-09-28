@@ -1,31 +1,17 @@
 import argparse
 import json
-import gzip
+from collections.abc import Iterator
+from itertools import islice
 from pathlib import Path
-from typing import Iterator, Dict, Any, List, Tuple, Optional
 from random import Random
+from typing import Any
+
+from utils.cli import cli_main
+from utils.io import iter_jsonl
 
 
-def iter_items(path: str | Path) -> Iterator[Dict[str, Any]]:
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Path not found: {p}")
-    opener = gzip.open if p.suffix == ".gz" else open
-    with opener(p, "rt", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(obj, dict):
-                yield obj
-
-
-def parse_sets(values: List[str]) -> List[Tuple[str, int]]:
-    result: List[Tuple[str, int]] = []
+def parse_sets(values: list[str]) -> list[tuple[str, int]]:
+    result: list[tuple[str, int]] = []
     for v in values:
         if ":" not in v:
             raise ValueError(f"Invalid --sets entry '{v}', expected name:count")
@@ -34,17 +20,17 @@ def parse_sets(values: List[str]) -> List[Tuple[str, int]]:
         try:
             n = int(cnt)
         except ValueError:
-            raise ValueError(f"Invalid count in --sets entry '{v}'")
+            raise ValueError(f"Invalid count in --sets entry '{v}'") from None
         if not name or n < 1:
             raise ValueError(f"Invalid --sets entry '{v}'")
         result.append((name, n))
     return result
 
 
-def reservoir_sample(stream: Iterator[Dict[str, Any]],
+def reservoir_sample(stream: Iterator[dict[str, Any]],
                      k: int,
-                     rnd: Random) -> List[Dict[str, Any]]:
-    res: List[Dict[str, Any]] = []
+                     rnd: Random) -> list[dict[str, Any]]:
+    res: list[dict[str, Any]] = []
     for t, item in enumerate(stream, start=1):
         if len(res) < k:
             res.append(item)
@@ -55,10 +41,10 @@ def reservoir_sample(stream: Iterator[Dict[str, Any]],
     return res
 
 
-def filter_stream(stream: Iterator[Dict[str, Any]],
-                  types: Optional[List[str]] = None,
+def filter_stream(stream: Iterator[dict[str, Any]],
+                  types: list[str] | None = None,
                   skip_deleted: bool = True,
-                  unique_by_id: bool = True) -> Iterator[Dict[str, Any]]:
+                  unique_by_id: bool = True) -> Iterator[dict[str, Any]]:
     seen_ids: set[int] = set()
     for obj in stream:
         if types and obj.get("type") not in types:
@@ -76,8 +62,8 @@ def filter_stream(stream: Iterator[Dict[str, Any]],
 
 
 def write_sets_files(root_out: str | Path,
-                     sets: List[Tuple[str, int]],
-                     items: List[Dict[str, Any]],
+                     sets: list[tuple[str, int]],
+                     items: list[dict[str, Any]],
                      fmt: str = "json",
                      pretty: bool = True) -> None:
     out_root = Path(root_out)
@@ -111,7 +97,7 @@ def write_sets_files(root_out: str | Path,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="make_samples",
+        prog="create_samples",
         description="Создание демонстрационных сэмплов из JSONL(.gz), один файл на набор"
     )
     parser.add_argument(
@@ -167,51 +153,35 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        sets = parse_sets(args.sets)
-        total_k = sum(c for _, c in sets)
+    sets = parse_sets(args.sets)
+    total_k = sum(c for _, c in sets)
 
-        stream = iter_items(args.input)
-        stream = filter_stream(
-            stream,
-            types=args.filter_types,
-            skip_deleted=not args.keep_deleted,
-            unique_by_id=True,
+    stream = filter_stream(
+        iter_jsonl(args.input),
+        types=args.filter_types,
+        skip_deleted=not args.keep_deleted,
+        unique_by_id=True,
+    )
+    if args.mode == "head":
+        sampled = list(islice(stream, total_k))
+    else:
+        sampled = reservoir_sample(stream, total_k, Random(args.seed))
+
+    if len(sampled) < total_k:
+        raise RuntimeError(
+            f"Недостаточно элементов после фильтров: нужно {total_k}, получено {len(sampled)}"
         )
 
-        if args.mode == "head":
-            sampled: List[Dict[str, Any]] = []
-            for obj in stream:
-                sampled.append(obj)
-                if len(sampled) >= total_k:
-                    break
-        else:
-            rnd = Random(args.seed)
-            sampled = reservoir_sample(stream, total_k, rnd)
+    write_sets_files(args.out_root, sets, sampled, fmt=args.format, pretty=not args.no_pretty)
 
-        if len(sampled) < total_k:
-            raise RuntimeError(
-                f"Недостаточно элементов после фильтров: нужно {total_k}, получено {len(sampled)}"
-            )
-
-        write_sets_files(
-            args.out_root,
-            sets,
-            sampled,
-            fmt=args.format,
-            pretty=not args.no_pretty
-        )
-
-        print("Готово:")
-        for name, cnt in sets:
-            suffix = ".jsonl" if args.format == "jsonl" else ".json"
-            print(f"- {args.out_root}/{name}{suffix} ({cnt} объектов)")
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
+    suffix = ".jsonl" if args.format == "jsonl" else ".json"
+    print("Готово:")
+    for name, cnt in sets:
+        print(f"- {args.out_root}/{name}{suffix} ({cnt} объектов)")
+    return 0
 
 
 if __name__ == "__main__":
