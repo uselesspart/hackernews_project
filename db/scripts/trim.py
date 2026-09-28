@@ -1,9 +1,12 @@
 import argparse
-from sqlalchemy import select, delete, func
+
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from db import session_scope
 from db.models import Story
+from utils.cli import cli_main
+
 
 def delete_stories_without_techs(session: Session, dry_run: bool = False) -> int:
     # Посчитать количество историй без технологий
@@ -27,22 +30,20 @@ def delete_stories_without_techs(session: Session, dry_run: bool = False) -> int
 
 def parse_args():
     p = argparse.ArgumentParser(
-        prog="delete_stories_without_techs",
+        prog="trim",
         description="Удаление всех Story без связанных Tech из БД"
     )
     p.add_argument("-d", "--db", required=True, help="DB URL (например, sqlite:///hn.db)")
     p.add_argument("--dry-run", action="store_true", help="Только показать количество, без удаления")
     return p.parse_args()
 
+
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        with session_scope(args.db) as session:
-            delete_stories_without_techs(session, dry_run=args.dry_run)
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
+    with session_scope(args.db) as session:
+        delete_stories_without_techs(session, dry_run=args.dry_run)
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

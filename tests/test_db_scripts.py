@@ -4,7 +4,7 @@ import json
 import pytest
 
 from db import session_scope
-from db.models import Story
+from db.models import Story, Tech
 from db.scripts import (
     db_connect,
     export_comments_for_techs,
@@ -15,7 +15,6 @@ from db.scripts import (
     trim,
 )
 from db.scripts.export_comments_for_techs import all_thread_comments_for_tech
-from db.models import Tech
 
 
 def _read(path):
@@ -38,9 +37,10 @@ def test_export_context_txt(run_cli, ingested_db, tmp_path):
 def test_export_context_cleans_each_comment_separately(run_cli, db_url, tmp_path):
     # Регрессия: clean_text на склеенной строке вырезал "< ... >" через границу комментариев,
     # а порядок комментариев зависел от плана запроса. Теперь порядок — по id комментария.
-    from tests.conftest import write_jsonl
-    from hackernews_handler import HNHandler
     from sqlalchemy import create_engine
+
+    from hackernews_handler import HNHandler
+    from tests.conftest import write_jsonl
     items = [
         {"id": 1, "type": "story", "title": "Compare"},
         {"id": 3, "type": "comment", "parent": 1, "text": "then c &gt; d"},

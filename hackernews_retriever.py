@@ -1,26 +1,25 @@
 import requests
 
+API_BASE = "https://hacker-news.firebaseio.com/v0/"
+
+
 class HNRetriever:
+    """Тонкий клиент HN Firebase API. session — requests.Session (или совместимый объект)."""
 
-    url_base = ""
+    def __init__(self, url_base: str = API_BASE, timeout: float = 10):
+        self.url_base = url_base
+        self.timeout = timeout
 
-    def __init__(self):
-        self.url_base = "https://hacker-news.firebaseio.com/v0/"
-
-    def retrieve_item(self, item_id, session=None, timeout=10):
-        url = f"{self.url_base}item/{item_id}.json"
-        sess = session or requests
-        resp = sess.get(url, timeout=timeout)
+    def _get(self, path: str, session=None):
+        resp = (session or requests).get(f"{self.url_base}{path}", timeout=self.timeout)
         resp.raise_for_status()
-        data = resp.json()
-        return data
+        return resp.json()
 
-    def get_maxitem_id(self):
-        url = f"{self.url_base}maxitem.json?print=pretty"
-        response = requests.get(url)
-        return response.json()
-    
-    def retrieve_best_stories(self):
-        url = f"{self.url_base}beststories.json?print=pretty"
-        response = requests.get(url)
-        return response.json()
+    def retrieve_item(self, item_id, session=None):
+        return self._get(f"item/{item_id}.json", session)
+
+    def get_maxitem_id(self, session=None) -> int:
+        return self._get("maxitem.json", session)
+
+    def retrieve_best_stories(self, session=None) -> list[int]:
+        return self._get("beststories.json", session)

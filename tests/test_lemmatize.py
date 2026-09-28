@@ -47,9 +47,20 @@ def test_tokenize_empty_text():
     assert tokenize_and_lemmatize("...", lemmatize_en=False) == []
 
 
-def test_lemmatize_is_noop_without_spacy(monkeypatch):
+def test_lemmatize_without_spacy_fails_loudly(monkeypatch, tmp_path):
+    # Раньше без spaCy лемматизация молча отключалась, и модели учились на сырых словах
     monkeypatch.setattr(lemmatize, "_en_nlp", None)
-    assert tokenize_and_lemmatize("cats running") == ["cats", "running"]
+    monkeypatch.setattr(lemmatize, "_en_nlp_error", ModuleNotFoundError("No module named 'click'"))
+    monkeypatch.setattr(lemmatize, "_LEMMA_CACHE", {})
+    with pytest.raises(RuntimeError, match="click"):
+        tokenize_and_lemmatize("cats running")
+
+    path = tmp_path / "in.txt"
+    path.write_text("cats running\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="--no-lemmatize"):
+        list(iter_tokenized_lines(path))
+    # Без лемматизации spaCy не нужен
+    assert list(iter_tokenized_lines(path, lemmatize_en=False)) == [["cats", "running"]]
 
 
 @pytest.mark.spacy
@@ -98,14 +109,14 @@ def test_load_preserve_words_from_file(tmp_path):
     path.write_text("# comment\nFooBar\n\nbaz\n", encoding="utf-8")
     words = load_preserve_words(path)
     assert {"foobar", "baz"} <= words
-    assert DEFAULT_PRESERVE_WORDS <= words
+    assert words >= DEFAULT_PRESERVE_WORDS
     assert "# comment" not in words
 
 
 def test_load_preserve_words_does_not_mutate_defaults(tmp_path):
     before = set(DEFAULT_PRESERVE_WORDS)
     load_preserve_words(None).add("extra")
-    assert DEFAULT_PRESERVE_WORDS == before
+    assert before == DEFAULT_PRESERVE_WORDS
 
 
 def test_iter_tokenized_lines(tmp_path):

@@ -1,57 +1,51 @@
 import argparse
-import pandas as pd
+
 import numpy as np
-from pathlib import Path
-
-# Используем неинтерактивный backend (до импорта pyplot)
-import matplotlib
-matplotlib.use('Agg')
-
-import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+
+from utils.cli import cli_main
+from visualization._common import plt, save_figure
+
+TOP_N = 20
+
+
+def single_tech_effects(coef_df: pd.DataFrame, top_n: int = TOP_N) -> pd.DataFrame:
+    """Строки has_<tech> (без пар), топ-N по IRR, в порядке возрастания для горизонтального графика."""
+    feature = coef_df['feature'].fillna("")
+    single = coef_df[feature.str.startswith('has_') & ~feature.str.startswith('has_pair_')].copy()
+    single['sig'] = (single['IRR_low'] > 1) | (single['IRR_high'] < 1)
+    return single.sort_values('IRR', ascending=False).head(top_n).sort_values('IRR')
+
 
 def parse_args():
     p = argparse.ArgumentParser(
-        prog="export_titles",
+        prog="draw_irr_plot",
         description="Отрисовка графика влияния технологий на число комментариев"
     )
-    p.add_argument("-i", "--input", required=True, help="Путь к входному файлу")
-    p.add_argument("-o", "--output", required=True, help="Путь к выходному файлу")
+    p.add_argument("-i", "--input", required=True, help="CSV с коэффициентами (calculate_irr)")
+    p.add_argument("-o", "--output", required=True, help="Путь к выходному изображению")
     return p.parse_args()
 
+
+@cli_main
 def main() -> int:
-    try:
-        args = parse_args()
-        out_path = Path(args.output)
-        out_path.parent.mkdir(parents=True, exist_ok=True)  # гарантируем наличие папки
+    args = parse_args()
+    plot_df = single_tech_effects(pd.read_csv(args.input, encoding='utf-8'))
 
-        coef_df = pd.read_csv(args.input, encoding='utf-8')
-        coef_df = coef_df[coef_df['feature'] != 'const'].copy()
+    sns.set(style='whitegrid')
+    fig, ax = plt.subplots(figsize=(8, max(6, 0.35 * len(plot_df))))
+    ypos = np.arange(len(plot_df))
+    ax.hlines(ypos, plot_df['IRR_low'], plot_df['IRR_high'], color='gray')
+    ax.scatter(plot_df['IRR'], ypos, c=np.where(plot_df['sig'], 'tab:blue', 'tab:orange'), s=60)
+    ax.vlines(1.0, -1, len(plot_df), linestyles='dashed', color='red', alpha=0.6)
+    ax.set_yticks(ypos, plot_df['feature'])
+    ax.set_xlabel('IRR (exp(coef))')
+    ax.set_title('Эффект технологий (IRR, 95% CI)')
+    fig.tight_layout()
+    save_figure(fig, args.output)
+    return 0
 
-        mask_has = coef_df['feature'].str.startswith('has_', na=False)
-        mask_pair = coef_df['feature'].str.startswith('has_pair_', na=False)
-        single = coef_df[mask_has & ~mask_pair].copy()
-
-        single['sig'] = (single['IRR_low'] > 1) | (single['IRR_high'] < 1)
-        plot_df = single.sort_values('IRR', ascending=False).head(20).sort_values('IRR')
-
-        sns.set(style='whitegrid')
-        plt.figure(figsize=(8, max(6, 0.35*len(plot_df))))
-        ypos = np.arange(len(plot_df))
-        plt.hlines(ypos, plot_df['IRR_low'], plot_df['IRR_high'], color='gray')
-        plt.scatter(plot_df['IRR'], ypos, c=np.where(plot_df['sig'], 'tab:blue', 'tab:orange'), s=60)
-        plt.vlines(1.0, -1, len(plot_df), linestyles='dashed', color='red', alpha=0.6)
-        plt.yticks(ypos, plot_df['feature'])
-        plt.xlabel('IRR (exp(coef))')
-        plt.title('Эффект технологий (IRR, 95% CI)')
-        plt.tight_layout()
-        plt.savefig(out_path, dpi=300, bbox_inches='tight')
-        print(f"Plot saved to {out_path}")
-
-        return 0
-    except (FileNotFoundError, OSError) as e:
-        print(f"Ошибка сохранения файла: {e}")
-        return 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

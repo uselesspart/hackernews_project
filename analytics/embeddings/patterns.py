@@ -1,18 +1,19 @@
 import re
-from typing import List, Dict, Pattern
+from re import Pattern
+
 
 def _re(p: str) -> Pattern:
     return re.compile(p, re.IGNORECASE)
 
 
-def compile_patterns(patterns: Dict[str, List[Pattern]]) -> Dict[str, Pattern]:
+def compile_patterns(patterns: dict[str, list[Pattern]]) -> dict[str, Pattern]:
     """Один regex на технологию вместо списка: ~110 поисков на текст вместо ~420."""
     return {
         tech: re.compile("|".join(f"(?:{p.pattern})" for p in pats), re.IGNORECASE)
         for tech, pats in patterns.items()
     }
 
-PATTERNS: Dict[str, List[Pattern]] = {
+PATTERNS: dict[str, list[Pattern]] = {
     "python": [
         _re(r"\bpython\b"), _re(r"\bcpython\b"), _re(r"\bpypy\b"), _re(r"\bpytest\b"),
         _re(r"\bpip3?\b"), _re(r"\bpoetry\b"), _re(r"\.py\b")
@@ -478,4 +479,4 @@ PATTERNS: Dict[str, List[Pattern]] = {
 }
 
 # Объединённые шаблоны для поиска (см. compile_patterns)
-COMPILED_PATTERNS: Dict[str, Pattern] = compile_patterns(PATTERNS)
+COMPILED_PATTERNS: dict[str, Pattern] = compile_patterns(PATTERNS)

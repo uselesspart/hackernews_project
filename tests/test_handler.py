@@ -1,13 +1,11 @@
-import gzip
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from db.models import Comment, Story
-from hackernews_handler import HNHandler, iter_items
+from hackernews_handler import HNHandler
 from tests.conftest import HN_ITEMS, write_jsonl
 
 
@@ -27,7 +25,7 @@ def test_story_row(handler):
     row = handler._story_row(HN_ITEMS[0])
     assert row == {
         "id": 1, "author": "a", "descendants": 4, "score": 10,
-        "time": datetime.fromtimestamp(1700000000, tz=timezone.utc),
+        "time": datetime.fromtimestamp(1700000000, tz=UTC),
         "title": "Why C++ is great", "url": "https://example.com/1", "kids": [10, 12],
         "dead": False, "deleted": False,
     }
@@ -58,23 +56,6 @@ def test_comment_row_unescapes_html(handler):
 def test_comment_row_deleted_has_no_text(handler):
     row = handler._comment_row(next(i for i in HN_ITEMS if i["id"] == 14))
     assert row["text"] is None and row["deleted"] is True
-
-
-def test_iter_items_plain_and_gzip(tmp_path):
-    lines = ['{"id": 1}', "", "not json", "[1, 2]", '{"id": 2}']
-    plain = tmp_path / "a.jsonl"
-    plain.write_text("\n".join(lines), encoding="utf-8")
-    packed = tmp_path / "a.jsonl.gz"
-    with gzip.open(packed, "wt", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-    assert list(iter_items(plain)) == [{"id": 1}, {"id": 2}]
-    assert list(iter_items(packed)) == [{"id": 1}, {"id": 2}]
-
-
-def test_iter_items_missing_file(tmp_path):
-    with pytest.raises(FileNotFoundError):
-        list(iter_items(tmp_path / "nope.jsonl"))
 
 
 def test_ingest_counts_and_rows(handler, engine, items_file):

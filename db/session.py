@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+
 from sqlalchemy import Boolean, create_engine, event, inspect
 from sqlalchemy.orm import sessionmaker
 

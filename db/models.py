@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -23,17 +22,17 @@ class Story(Base):
     __tablename__ = "story"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    author: Mapped[Optional[str]] = mapped_column(String(50))
-    descendants: Mapped[Optional[int]] = mapped_column(Integer)
-    score: Mapped[Optional[int]] = mapped_column(Integer)
-    time: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    title: Mapped[Optional[str]] = mapped_column(String)
-    url: Mapped[Optional[str]] = mapped_column(String)
+    author: Mapped[str | None] = mapped_column(String(50))
+    descendants: Mapped[int | None] = mapped_column(Integer)
+    score: Mapped[int | None] = mapped_column(Integer)
+    time: Mapped[datetime | None] = mapped_column(DateTime)
+    title: Mapped[str | None] = mapped_column(String)
+    url: Mapped[str | None] = mapped_column(String)
     kids: Mapped[list[int]] = mapped_column(JSON, default=list)
-    dead: Mapped[Optional[bool]] = mapped_column(Boolean)
-    deleted: Mapped[Optional[bool]] = mapped_column(Boolean)
+    dead: Mapped[bool | None] = mapped_column(Boolean)
+    deleted: Mapped[bool | None] = mapped_column(Boolean)
 
-    techs: Mapped[List["Tech"]] = relationship(
+    techs: Mapped[list["Tech"]] = relationship(
         secondary=story_tech,
         back_populates="stories",
         lazy="selectin",
@@ -47,13 +46,13 @@ class Comment(Base):
     __tablename__ = "comment"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    author: Mapped[Optional[str]] = mapped_column(String(50))
+    author: Mapped[str | None] = mapped_column(String(50))
     # По parent строятся ветки (JOIN с историей и рекурсивный CTE) — без индекса это полный скан
-    parent: Mapped[Optional[int]] = mapped_column(Integer, index=True)
-    time: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    text: Mapped[Optional[str]] = mapped_column(String)
-    dead: Mapped[Optional[bool]] = mapped_column(Boolean)
-    deleted: Mapped[Optional[bool]] = mapped_column(Boolean)
+    parent: Mapped[int | None] = mapped_column(Integer, index=True)
+    time: Mapped[datetime | None] = mapped_column(DateTime)
+    text: Mapped[str | None] = mapped_column(String)
+    dead: Mapped[bool | None] = mapped_column(Boolean)
+    deleted: Mapped[bool | None] = mapped_column(Boolean)
 
     def __repr__(self) -> str:
         return f"Comment(id={self.id!r}, author={self.author!r}, time={self.time!r})"
@@ -66,7 +65,7 @@ class Tech(Base):
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
     # Не selectin: иначе загрузка любого Tech тянет за собой все его истории (тысячи строк)
-    stories: Mapped[List[Story]] = relationship(
+    stories: Mapped[list[Story]] = relationship(
         secondary=story_tech,
         back_populates="techs",
         lazy="select",

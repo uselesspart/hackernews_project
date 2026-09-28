@@ -14,11 +14,6 @@ def make_kv(vectors):
     return kv
 
 
-def test_normalize_categories_dict_dedups_and_normalizes():
-    raw = {"lang": ["Python", "python", " Stable Diffusion "], 1: ["Go"]}
-    assert irr.normalize_categories_dict(raw) == {"lang": ["python", "stable_diffusion"], "1": ["go"]}
-
-
 @pytest.mark.parametrize("title, expected", [
     ("Rust and C++ and Python and Go 1.22", ["rust", "cpp", "python"]),  # порядок появления, не более 3
     ("Python, python, PYTHON", ["python"]),
@@ -29,24 +24,22 @@ def test_extract_tech_regex(title, expected):
     assert irr.extract_tech_regex(title) == expected
 
 
-def test_cos():
-    assert irr.cos(np.array([1.0, 0.0]), np.array([0.0, 0.0])) == 0.0
-    assert irr.cos(np.array([1.0, 1.0]), np.array([2.0, 2.0])) == pytest.approx(1.0)
-
-
-def test_title_stats_vecmap():
-    vec_map = {"a": np.array([1.0, 0.0]), "b": np.array([0.0, 1.0]), "c": np.array([1.0, 1.0])}
-    assert irr.title_stats_vecmap(["a"], vec_map) == (0.0, 0.0, 0.0)
-    assert irr.title_stats_vecmap(["a", "missing"], vec_map) == (0.0, 0.0, 0.0)
-    mn, mean, mx = irr.title_stats_vecmap(["a", "b", "c"], vec_map)
+def test_pair_similarity_stats():
+    vec_map = {"a": np.array([1.0, 0.0]), "b": np.array([0.0, 1.0]), "c": np.array([1.0, 1.0]),
+               "bad": np.array([np.nan, 1.0])}
+    sim = irr.PairSimilarity(vec_map)
+    assert sim.stats(["a"]) == (0.0, 0.0, 0.0)
+    assert sim.stats(["a", "missing", "bad"]) == (0.0, 0.0, 0.0)  # нет вектора / NaN-вектор
+    mn, mean, mx = sim.stats(["a", "b", "c"])
     assert (mn, mx) == pytest.approx((0.0, np.sqrt(0.5)))
     assert mean == pytest.approx(2 * np.sqrt(0.5) / 3)
 
 
-def test_title_stats_tokens():
+def test_token_vec_map():
     w2v = SimpleNamespace(wv=make_kv({"x": [1.0, 0.0], "y": [1.0, 0.0]}))
-    assert irr.title_stats_tokens(["x", "y"], w2v) == pytest.approx((1.0, 1.0, 1.0))
-    assert irr.title_stats_tokens(["x", "unknown"], w2v) == (0.0, 0.0, 0.0)
+    vec_map = irr.token_vec_map(w2v, ["x", "y", "unknown"])
+    assert set(vec_map) == {"x", "y"}
+    assert irr.PairSimilarity(vec_map).stats(["x", "y"]) == pytest.approx((1.0, 1.0, 1.0))
 
 
 def test_build_group_maps():

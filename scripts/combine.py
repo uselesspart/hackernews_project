@@ -1,31 +1,33 @@
 import argparse
+import contextlib
 import gzip
-import json
 import hashlib
+import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+
+from utils.cli import cli_main
+
 
 def iter_files(input_dir: Path, pattern: str, recursive: bool) -> Iterable[Path]:
-    if recursive:
-        yield from sorted(input_dir.rglob(pattern))
-    else:
-        yield from sorted(input_dir.glob(pattern))
+    yield from sorted(input_dir.rglob(pattern) if recursive else input_dir.glob(pattern))
+
+
+def _digest(text: str) -> bytes:
+    return hashlib.blake2s(text.encode("utf-8"), digest_size=16).digest()
+
 
 def _dedup_key_line(line: str) -> bytes:
     # Нормализуем перевод строки и считаем хеш содержимого
-    raw = line.rstrip("\r\n")
-    return hashlib.blake2s(raw.encode("utf-8"), digest_size=16).digest()
+    return _digest(line.rstrip("\r\n"))
+
 
 def _dedup_key_json(line: str) -> bytes:
     raw = line.rstrip("\r\n")
-    try:
-        obj = json.loads(raw)
-        # Канонизируем JSON: сортировка ключей, компактные разделители, без лишних пробелов
-        canonical = json.dumps(obj, separators=(",", ":"), sort_keys=True, ensure_ascii=False)
-        return hashlib.blake2s(canonical.encode("utf-8"), digest_size=16).digest()
-    except json.JSONDecodeError:
-        # Если это невалидный JSON, падаем обратно на строчный ключ
-        return hashlib.blake2s(raw.encode("utf-8"), digest_size=16).digest()
+    # Канонизируем JSON: сортировка ключей, компактные разделители; невалидный JSON сравниваем как строку
+    with contextlib.suppress(json.JSONDecodeError):
+        raw = json.dumps(json.loads(raw), separators=(",", ":"), sort_keys=True, ensure_ascii=False)
+    return _digest(raw)
 
 def merge_jsonl_gz(
     input_dir: Path,
@@ -79,17 +81,26 @@ def merge_jsonl_gz(
     else:
         print("Дедуп по строкам: учитывается точное совпадение содержимого (без учёта перевода строки).")
 
-def main():
-    parser = argparse.ArgumentParser(description="Склейка *.jsonl.gz в один .jsonl.gz с удалением дубликатов")
-    parser.add_argument("-i", "--input_dir", type=Path, help="Папка с файлами")
-    parser.add_argument("-o", "--output", type=Path, help="Путь к выходному .jsonl.gz")
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="combine",
+        description="Склейка *.jsonl.gz в один .jsonl.gz с удалением дубликатов",
+    )
+    parser.add_argument("-i", "--input_dir", type=Path, required=True, help="Папка с файлами")
+    parser.add_argument("-o", "--output", type=Path, required=True, help="Путь к выходному .jsonl.gz")
     parser.add_argument("--pattern", default="*.jsonl.gz", help="Маска файлов (по умолчанию *.jsonl.gz)")
     parser.add_argument("--recursive", action="store_true", help="Искать рекурсивно")
     parser.add_argument("--dedup", choices=["line", "json"], default="line",
                         help="Как определять дубликаты: 'line' (по строкам) или 'json' (по канонизированному JSON)")
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+@cli_main
+def main():
+    args = parse_args()
     merge_jsonl_gz(args.input_dir, args.output, args.pattern, args.recursive, dedup=args.dedup)
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

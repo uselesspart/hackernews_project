@@ -69,7 +69,7 @@ def test_build_frequencies_does_not_mutate_global_stop_words():
     before = set(draw_wordcloud.EN_STOP)
     freqs = draw_wordcloud.build_frequencies(["rust compiler"], extra_stop={"rust"})
     assert freqs == {"compiler": 1}
-    assert draw_wordcloud.EN_STOP == before
+    assert before == draw_wordcloud.EN_STOP
 
 
 def test_wordcloud_main(run_cli, tmp_path):

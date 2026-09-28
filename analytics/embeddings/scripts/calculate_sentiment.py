@@ -1,28 +1,47 @@
-import sys
-import re
-import os
-import glob
-import csv
-import numpy as np
 import argparse
-from gensim.models import Word2Vec
+import csv
+import glob
+import os
+import re
+import sys
 from collections import defaultdict
+
+import numpy as np
+from gensim.models import Word2Vec
 from sklearn.linear_model import LogisticRegression
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+from utils.cli import cli_main
+from utils.io import read_nonempty_lines
+from utils.vectors import cosine
+
+SEED_POS = {
+    "good", "great", "excellent", "amazing", "awesome", "fantastic", "love", "like",
+    "happy", "satisfied", "recommend", "wonderful", "brilliant", "positive", "cool",
+    "perfect", "nice", "solid", "helpful", "reliable"
+}
+SEED_NEG = {
+    "bad", "terrible", "awful", "horrible", "hate", "disgusting", "trash", "worst",
+    "sad", "angry", "disappointed", "scam", "fake", "useless", "broken", "poor",
+    "buggy", "annoying", "ridiculous", "crap"
+}
+AUTO_THRESHOLD_MIN = 0.08
+
 
 def tokenize(text):
     # Апостроф внутри слова сохраняется, чтобы "don't" не распадалось на "don" + "t"
     return re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
 
-def prep(text):
-    return tokenize(text)
 
 NEGATIONS = {"not", "no", "never", "without", "none", "neither", "nor", "nothing",
              "nobody", "cannot", "dont", "doesnt", "didnt", "isnt", "arent", "wasnt",
              "werent", "cant", "couldnt", "wont", "wouldnt", "shouldnt", "havent", "hasnt"}
 
+
 def is_negation(w):
     return w in NEGATIONS or w.endswith("n't")
+
+
 INTENSIFIERS = {"very": 1.5, "really": 1.4, "so": 1.3, "extremely": 1.6, "super": 1.5, "highly": 1.4, "too": 1.3}
 DIMINISHERS = {"slightly": 0.7, "a_little": 0.7, "somewhat": 0.75, "barely": 0.6, "hardly": 0.6}
 
@@ -60,11 +79,8 @@ def merge_lexicons(w2v_pol, vader_lex, alpha=0.7):
             merged[w] = v_norm
     return merged
 
-def cos(a, b):
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
-
 def phrase_vector(text, model):
-    toks = prep(text)
+    toks = tokenize(text)
     vecs = [model[w] for w in toks if w in model]
     if not vecs:
         return None
@@ -87,14 +103,14 @@ class AspectAttention:
             return 1.0
         att = self._cache.get(w)
         if att is None:
-            att = max(cos(self.model[w], self.kvec), 0.0) ** self.p
+            att = max(cosine(self.model[w], self.kvec), 0.0) ** self.p
             self._cache[w] = att
         return att
 
 
 def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2.0, neg_window=3,
                            attention=None):
-    toks = prep(text)
+    toks = tokenize(text)
     if attention is None:
         attention = AspectAttention(model_comments, keyword, p)
 
@@ -170,7 +186,7 @@ def doc_vec(tokens, model):
     return np.mean(vecs, axis=0)
 
 def combined_doc_vec(text, model_titles, model_comments):
-    toks = prep(text)
+    toks = tokenize(text)
     v1 = doc_vec(toks, model_titles)
     v2 = doc_vec(toks, model_comments)
     return np.concatenate([v1, v2])
@@ -187,7 +203,7 @@ def bootstrap_classifier(texts, model_titles, model_comments, polarity_lex, keyw
     y = labels[idx]
 
     if len(y) < 50:
-        print("Too few confident pseudo-labels; adjust seeds or top_percent.")
+        print("Слишком мало уверенных псевдометок для bootstrap; используется lexicon", file=sys.stderr)
         return None
 
     clf = LogisticRegression(max_iter=1000, class_weight="balanced")
@@ -243,60 +259,42 @@ def compute_corpus_summary(rows, mode, thr=0.12):
 
     return summary
 
-def read_comments_from_file(path):
-    comments = []
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                comments.append(line)
-    return comments
+def labeled_rows(comments, scores, auto_thr, auto_percent, threshold):
+    """(idx, label, score, text) по оценкам; при auto_thr порог — процентиль |score|."""
+    thr = max(np.percentile(np.abs(scores), auto_percent), AUTO_THRESHOLD_MIN) if auto_thr else threshold
+    rows = [(i, label_from_score(s, thr=thr), float(s), t) for i, (t, s) in enumerate(zip(comments, scores))]
+    return rows, thr
 
-def process_single_file(file_path, model_titles, model_comments, polarity_lex, vader, mode, keyword, 
+
+def process_single_file(file_path, model_titles, model_comments, polarity_lex, vader, mode, keyword,
                         auto_thr, auto_percent, threshold, p, neg_window, top_percent):
-    comments = read_comments_from_file(file_path)
+    comments = read_nonempty_lines(file_path, errors="replace")
     attention = AspectAttention(model_comments, keyword, p)
-    rows = []
+
+    def lexicon_scores():
+        return [aspect_sentiment_score(t, model_comments, polarity_lex, neg_window=neg_window, attention=attention)
+                for t in comments]
+
     thr_used = threshold
-
     if mode == "lexicon":
-        scores = [aspect_sentiment_score(t, model_comments, polarity_lex, neg_window=neg_window, attention=attention) for t in comments]
-        if auto_thr:
-            abs_scores = np.abs(scores)
-            thr_used = max(np.percentile(abs_scores, auto_percent), 0.08)
-        labels = [label_from_score(s, thr=thr_used) for s in scores]
-        for i, (t, s, y) in enumerate(zip(comments, scores, labels)):
-            rows.append((i, y, float(s), t))
-
+        rows, thr_used = labeled_rows(comments, lexicon_scores(), auto_thr, auto_percent, threshold)
     elif mode == "vader":
-        scores = []
-        for t in comments:
-            if keyword:
-                s = vader_aspect_score(t, keyword, vader)
-            else:
-                s = vader.polarity_scores(t)["compound"] if vader else 0.0
-            scores.append(s)
-        thr_used = threshold if not auto_thr else max(np.percentile(np.abs(scores), auto_percent), 0.08)
-        labels = [label_from_score(s, thr=thr_used) for s in scores]
-        for i, (t, s, y) in enumerate(zip(comments, scores, labels)):
-            rows.append((i, y, float(s), t))
-
-    elif mode == "bootstrap":
-        clf = bootstrap_classifier(comments, model_titles, model_comments, polarity_lex, keyword=keyword, top_percent=top_percent)
+        scores = [vader_aspect_score(t, keyword, vader) if keyword else vader.polarity_scores(t)["compound"]
+                  for t in comments]
+        rows, thr_used = labeled_rows(comments, scores, auto_thr, auto_percent, threshold)
+    else:  # bootstrap
+        clf = bootstrap_classifier(comments, model_titles, model_comments, polarity_lex,
+                                   keyword=keyword, top_percent=top_percent)
         if clf is None:
-            scores = [aspect_sentiment_score(t, model_comments, polarity_lex, neg_window=neg_window, attention=attention) for t in comments]
-            thr_used = threshold if not auto_thr else max(np.percentile(np.abs(scores), auto_percent), 0.08)
-            labels = [label_from_score(s, thr=thr_used) for s in scores]
-            for i, (t, s, y) in enumerate(zip(comments, scores, labels)):
-                rows.append((i, y, float(s), t))
+            rows, thr_used = labeled_rows(comments, lexicon_scores(), auto_thr, auto_percent, threshold)
             mode = "lexicon_fallback"
         else:
             preds, probs = predict_with_classifier(clf, comments, model_titles, model_comments)
-            maxp = probs.max(axis=1)
-            for i, (t, y, pmax) in enumerate(zip(comments, preds, maxp)):
-                rows.append((i, int(y), float(pmax), t))
+            rows = [(i, int(y), float(pmax), t)
+                    for i, (t, y, pmax) in enumerate(zip(comments, preds, probs.max(axis=1)))]
 
-    summary = compute_corpus_summary(rows, mode="vader" if mode == "vader" else ("lexicon" if mode.startswith("lexicon") else "bootstrap"), thr=thr_used)
+    summary_mode = "lexicon" if mode == "lexicon_fallback" else mode
+    summary = compute_corpus_summary(rows, mode=summary_mode, thr=thr_used)
     summary.update({
         "file": os.path.basename(file_path),
         "path": file_path,
@@ -333,94 +331,75 @@ def write_summaries_csv(summaries, out_path):
 
 def parse_args():
     p = argparse.ArgumentParser(
-        prog="export_titles",
-        description="Отрисовка карты отношений между словами"
+        prog="calculate_sentiment",
+        description="Тональность комментариев по каждой технологии (лексикон w2v, VADER или bootstrap)"
     )
-    p.add_argument("-i", "--input", type=str, help="Путь к одному файлу (по одному комментарию в строке).")
-    p.add_argument("-d", "--dir", type=str, help="Папка с файлами для пакетной обработки.")
-    p.add_argument("--pattern", type=str, default="*.txt", help="Глоб‑шаблон для выбора файлов в папке (например, *.txt).")
+    p.add_argument("-i", "--input", help="Путь к одному файлу (по одному комментарию в строке).")
+    p.add_argument("-d", "--dir", help="Папка с файлами для пакетной обработки.")
+    p.add_argument("--pattern", default="*.txt", help="Глоб-шаблон для выбора файлов в папке (например, *.txt).")
     p.add_argument("--recursive", action="store_true", help="Рекурсивный проход по подпапкам.")
-    p.add_argument("--titles-kv", type=str, default="w2v_titles.kv", help="Путь к модели w2v (заголовки).")
-    p.add_argument("--comments-kv", type=str, default="w2v_titles_comments.kv", help="Путь к модели w2v (заголовки+комменты).")
-    p.add_argument("--mode", type=str, choices=["lexicon", "vader", "bootstrap"], default="lexicon", help="Режим анализа.")
-    p.add_argument("--keyword", type=str, default=None, help="Аспект/ключевое слово (опц.).")
+    # Имена флагов сохранены для совместимости; ожидается модель gensim Word2Vec (.model)
+    p.add_argument("--titles-kv", default="w2v_titles.model", help="Модель Word2Vec (заголовки), .model")
+    p.add_argument("--comments-kv", default="w2v_titles_comments.model",
+                   help="Модель Word2Vec (заголовки+комментарии), .model")
+    p.add_argument("--mode", choices=["lexicon", "vader", "bootstrap"], default="lexicon", help="Режим анализа.")
+    p.add_argument("--keyword", default=None, help="Аспект/ключевое слово (опц.).")
     p.add_argument("--use-vader", action="store_true", help="Сливать лексикон w2v с VADER.")
     p.add_argument("--p", type=float, default=2.0, help="Степень внимания к ключу.")
     p.add_argument("--neg-window", type=int, default=3, help="Окно для отрицаний.")
     p.add_argument("--threshold", type=float, default=0.12, help="Порог меток {-1,0,1}.")
     p.add_argument("--auto-thr", action="store_true", help="Автокалибровка порога по распределению в файле.")
     p.add_argument("--auto-percent", type=int, default=60, help="Процентиль |score| для автопорога.")
-    p.add_argument("--top-percent", type=int, default=20, help="Топ-% уверенных примеров для bootstrap.")
-    p.add_argument("--out-csv", type=str, default="corpus_summary.csv", help="Итоговый CSV по всем обработанным файлам.")
-    p.add_argument("--save-rows-dir", type=str, default=None, help="Папка для сохранения пер-файловых TSV (idx, label, score/conf, text).")
+    p.add_argument("--top-percent", type=int, default=20, help="Топ-%% уверенных примеров для bootstrap.")
+    p.add_argument("--out-csv", default="corpus_summary.csv", help="Итоговый CSV по всем обработанным файлам.")
+    p.add_argument("--save-rows-dir", default=None,
+                   help="Папка для пофайловых TSV (idx, label, score/conf, text).")
     return p.parse_args()
 
+def write_rows_tsv(rows, path):
+    with open(path, "w", encoding="utf-8") as out:
+        out.write("idx\tlabel\tscore_or_confidence\ttext\n")
+        for idx, label, value, text in rows:
+            out.write(f"{idx}\t{label}\t{value:.4f}\t{text}\n")
+
+
+@cli_main
 def main():
-    try:
-        args = parse_args()
+    args = parse_args()
+    if args.input:
+        files = [args.input]
+    elif args.dir:
+        files = list_files_in_dir(args.dir, pattern=args.pattern, recursive=args.recursive)
+        if not files:
+            raise ValueError(f"В папке {args.dir} нет файлов по шаблону {args.pattern}")
+    else:
+        raise ValueError("Необходимо указать --input или --dir")
 
-        model = Word2Vec.load(args.titles_kv)
-        model_titles = model.wv
-        model = Word2Vec.load(args.comments_kv)
-        model_comments = model.wv
+    model_titles = Word2Vec.load(args.titles_kv).wv
+    model_comments = Word2Vec.load(args.comments_kv).wv
 
-        vader = None
-        vader_lex = {}
-        try:
-            if args.use_vader or args.mode == "vader":
-                vader = SentimentIntensityAnalyzer()
-                vader_lex = vader.lexicon
-        except Exception:
-            pass
+    vader = SentimentIntensityAnalyzer() if args.use_vader or args.mode == "vader" else None
+    polarity_lex = expand_lexicon(SEED_POS, SEED_NEG, model_comments, topn=100, sim_thr=0.62)
+    if vader is not None:
+        polarity_lex = merge_lexicons(polarity_lex, vader.lexicon)
 
-        seed_pos = {
-            "good", "great", "excellent", "amazing", "awesome", "fantastic", "love", "like",
-            "happy", "satisfied", "recommend", "wonderful", "brilliant", "positive", "cool",
-            "perfect", "nice", "solid", "helpful", "reliable"
-        }
-        seed_neg = {
-            "bad", "terrible", "awful", "horrible", "hate", "disgusting", "trash", "worst",
-            "sad", "angry", "disappointed", "scam", "fake", "useless", "broken", "poor",
-            "buggy", "annoying", "ridiculous", "crap"
-        }
-        w2v_pol = expand_lexicon(seed_pos, seed_neg, model_comments, topn=100, sim_thr=0.62)
-        polarity_lex = merge_lexicons(w2v_pol, vader_lex) if vader_lex else w2v_pol
+    summaries = []
+    for fp in files:
+        print(f"Обработка: {fp}", file=sys.stderr)
+        rows, summary = process_single_file(
+            fp, model_titles, model_comments, polarity_lex, vader, args.mode, args.keyword,
+            args.auto_thr, args.auto_percent, args.threshold,
+            args.p, args.neg_window, args.top_percent
+        )
+        summaries.append(summary)
+        if args.save_rows_dir:
+            os.makedirs(args.save_rows_dir, exist_ok=True)
+            write_rows_tsv(rows, os.path.join(args.save_rows_dir, os.path.basename(fp) + ".rows.tsv"))
 
-        if args.input:
-            files = [args.input]
-        elif args.dir:
-            files = list_files_in_dir(args.dir, pattern=args.pattern, recursive=args.recursive)
-            if not files:
-                print("В папке нет файлов по шаблону.", file=sys.stderr)
-                sys.exit(1)
-        else:
-            print("Необходимо указать --input или --dir", file=sys.stderr)
-            sys.exit(1)
+    write_summaries_csv(summaries, args.out_csv)
+    print(f"Готово: сводный CSV → {args.out_csv}", file=sys.stderr)
+    return 0
 
-        summaries = []
-        for fp in files:
-            print(f"Processing: {fp}", file=sys.stderr)
-            rows, summary = process_single_file(
-                fp, model_titles, model_comments, polarity_lex, vader, args.mode, args.keyword,
-                args.auto_thr, args.auto_percent, args.threshold,
-                args.p, args.neg_window, args.top_percent
-            )
-            summaries.append(summary)
-
-            if args.save_rows_dir:
-                os.makedirs(args.save_rows_dir, exist_ok=True)
-                out_tsv = os.path.join(args.save_rows_dir, os.path.basename(fp) + ".rows.tsv")
-                with open(out_tsv, "w", encoding="utf-8") as out:
-                    out.write("idx\tlabel\tscore_or_confidence\ttext\n")
-                    for r in rows:
-                        out.write(f"{r[0]}\t{r[1]}\t{r[2]:.4f}\t{r[3]}\n")
-
-        write_summaries_csv(summaries, args.out_csv)
-        print(f"Готово: сводный CSV → {args.out_csv}", file=sys.stderr)
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

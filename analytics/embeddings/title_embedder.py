@@ -1,8 +1,9 @@
-import json
 import gzip
+import json
 from pathlib import Path
 
 from utils.lemmatize import iter_tokenized_lines
+
 
 def save_token_matrix_jsonl_gz(
     src_path: str | Path,
@@ -13,6 +14,7 @@ def save_token_matrix_jsonl_gz(
     lower: bool = True,
     lemmatize_en: bool = True,
 ) -> None:
+    """TXT (строка = предложение) -> JSONL.GZ (строка = JSON-список токенов) для обучения Word2Vec."""
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     count = 0
@@ -27,18 +29,3 @@ def save_token_matrix_jsonl_gz(
             gzf.write(json.dumps(tokens, ensure_ascii=False) + "\n")
             count += 1
     print(f"Сохранено {count} строк в {out}")
-
-class TitleEmbedder:
-    def __init__(self) -> None:
-        pass
-
-    def sentences_to_vectors(self, path: str | Path, out: str | Path) -> None:
-        save_token_matrix_jsonl_gz(
-            path,
-            #out_path="artifacts/embeddings/words/titles.tokens5.jsonl.gz",
-            out,
-            keep_punct=False,
-            num_token="<NUM>",
-            lower=True,
-            lemmatize_en=True,
-        )

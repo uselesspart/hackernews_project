@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -183,7 +184,9 @@ def test_list_files_in_dir(tmp_path):
     (tmp_path / "b.csv").write_text("x")
     (tmp_path / "sub").mkdir()
     (tmp_path / "sub" / "c.txt").write_text("x")
-    names = lambda files: sorted(p.replace("\\", "/").split("/")[-1] for p in files)
+    def names(files):
+        return sorted(Path(p).name for p in files)
+
     assert names(cs.list_files_in_dir(str(tmp_path))) == ["a.txt"]
     assert names(cs.list_files_in_dir(str(tmp_path), recursive=True)) == ["a.txt", "c.txt"]
 

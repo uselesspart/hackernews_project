@@ -1,14 +1,15 @@
 import argparse
-import csv
-import json
 from itertools import groupby
-from pathlib import Path
+
 from sqlalchemy import and_, select
 
-from db.models import Comment, Story
 from db import session_scope
+from db.models import Comment, Story
 from db.queries import is_alive
 from utils.clean_text import clean_text
+from utils.cli import cli_main
+from utils.io import EXPORT_FORMATS, write_records
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -17,7 +18,7 @@ def parse_args():
     )
     p.add_argument("-d", "--db", required=True, help="DB URL (например, sqlite:///hn.db)")
     p.add_argument("-o", "--out", required=True, help="Путь к выходному файлу (например, samples/titles.txt)")
-    p.add_argument("--format", choices=["txt", "csv", "jsonl"], default="txt", help="Формат выхода (по умолчанию txt)")
+    p.add_argument("--format", choices=EXPORT_FORMATS, default="txt", help="Формат выхода (по умолчанию txt)")
     p.add_argument("--limit", type=int, default=None, help="Ограничение числа записей")
     p.add_argument("--keep-deleted", action="store_true", help="Не фильтровать deleted/dead")
     return p.parse_args()
@@ -54,35 +55,17 @@ def iter_contexts(rows):
         comments = [c for c in (clean_text(text) for _, _, text in group) if c]
         yield story_id, clean_text(title), comments
 
+@cli_main
 def main() -> int:
-
     args = parse_args()
-    try:
-        out_path = Path(args.out)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+    with session_scope(args.db) as session:
+        rows = session.execute(build_stmt(args.keep_deleted, args.limit)).tuples()
+        records = ((story_id, title, " ".join(comments)) for story_id, title, comments in iter_contexts(rows))
+        write_records(args.out, args.format, ["id", "title", "context"], records,
+                      txt=lambda r: " ".join(p for p in (r[1], r[2]) if p))
+    print(f"Готово: экспорт заголовков и комментариев в {args.out}")
+    return 0
 
-        with session_scope(args.db) as session, \
-                open(out_path, "w", encoding="utf-8", newline="") as f:
-            rows = session.execute(build_stmt(args.keep_deleted, args.limit)).tuples()
-            writer = csv.writer(f) if args.format == "csv" else None
-            if writer:
-                writer.writerow(["id", "title", "context"])
-
-            for story_id, title, comments in iter_contexts(rows):
-                context = " ".join(comments)
-                if args.format == "txt":
-                    f.write(" ".join(p for p in (title, *comments) if p) + "\n")
-                elif args.format == "csv":
-                    writer.writerow([story_id, title, context])
-                else:
-                    f.write(json.dumps({"id": story_id, "title": title, "context": context},
-                                       ensure_ascii=False) + "\n")
-
-        print(f"Готово: экспорт заголовков и комментариев в {out_path}")
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

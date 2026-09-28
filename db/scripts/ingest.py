@@ -1,15 +1,14 @@
 import argparse
 import sys
-from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 from db.session import get_engine
 from hackernews_handler import HNHandler
+from utils.cli import cli_main
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="hn_ingest",
+        prog="ingest",
         description="Загрузка Hacker News JSONL(.gz) в базу данных"
     )
     parser.add_argument(
@@ -36,36 +35,26 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+@cli_main
 def main() -> int:
     args = parse_args()
+    handler = HNHandler(get_engine(args.db, echo=args.echo), batch_size=args.batch_size)
 
-    try:
-        engine = get_engine(args.db, echo=args.echo)
-    except Exception as e:
-        print(f"Ошибка создания engine для '{args.db}': {e}", file=sys.stderr)
-        return 1
-
-    handler = HNHandler(engine, batch_size=args.batch_size)
-
-    total_stories = 0
-    total_comments = 0
-
+    total = {"stories": 0, "comments": 0}
     for path in args.input:
+        print(f"Импорт из файла: {path}")
         try:
-            print(f"Импорт из файла: {path}")
             counts = handler.ingest_from_path(path)
-            print(f"Готово: stories={counts['stories']}, comments={counts['comments']}")
-            total_stories += counts["stories"]
-            total_comments += counts["comments"]
         except FileNotFoundError as e:
             print(f"Файл не найден: {e}", file=sys.stderr)
             return 2
-        except Exception as e:
-            print(f"Ошибка импорта из '{path}': {e}", file=sys.stderr)
-            return 3
+        print(f"Готово: stories={counts['stories']}, comments={counts['comments']}")
+        total["stories"] += counts["stories"]
+        total["comments"] += counts["comments"]
 
-    print(f"Всего загружено: stories={total_stories}, comments={total_comments}")
+    print(f"Всего загружено: stories={total['stories']}, comments={total['comments']}")
     return 0
 
+
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

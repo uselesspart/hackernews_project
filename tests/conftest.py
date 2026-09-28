@@ -19,7 +19,8 @@ def _spacy_available() -> bool:
 def pytest_collection_modifyitems(config, items):
     if _spacy_available():
         return
-    skip = pytest.mark.skip(reason="spaCy en_core_web_sm не установлена")
+    from utils import lemmatize
+    skip = pytest.mark.skip(reason=f"spaCy en_core_web_sm не загружается: {lemmatize._en_nlp_error!r}")
     for item in items:
         if "spacy" in item.keywords:
             item.add_marker(skip)
@@ -76,8 +77,8 @@ def ingested_db(db_url, items_file):
 @pytest.fixture
 def classified_db(ingested_db):
     """БД с HN_ITEMS и связями story <-> tech."""
-    from db import session_scope
     from analytics.embeddings.scripts.classify_tech import classify_stories
+    from db import session_scope
     with session_scope(ingested_db) as session:
         classify_stories(session)
     return ingested_db

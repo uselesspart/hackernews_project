@@ -1,15 +1,18 @@
-import re
-from typing import Dict, List, Iterable, Set
 import argparse
+import re
+from collections.abc import Iterable
+
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
+from analytics.embeddings.patterns import COMPILED_PATTERNS, PATTERNS, compile_patterns
 from db import session_scope
 from db.models import Story, Tech, story_tech
-from analytics.embeddings.patterns import COMPILED_PATTERNS, PATTERNS, compile_patterns
+from utils.cli import cli_main
 
-def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]:
-    existing: Dict[str, Tech] = {
+
+def ensure_techs(session: Session, tech_names: Iterable[str]) -> dict[str, Tech]:
+    existing: dict[str, Tech] = {
         t.name: t for t in session.execute(select(Tech)).scalars().all()
     }
     to_create = [Tech(name=name) for name in tech_names if name not in existing]
@@ -21,24 +24,24 @@ def ensure_techs(session: Session, tech_names: Iterable[str]) -> Dict[str, Tech]
     return existing
 
 
-def _compiled(patterns: Dict[str, List[re.Pattern]]) -> Dict[str, re.Pattern]:
+def _compiled(patterns: dict[str, list[re.Pattern]]) -> dict[str, re.Pattern]:
     return COMPILED_PATTERNS if patterns is PATTERNS else compile_patterns(patterns)
 
 
-def match_techs(title: str, patterns: Dict[str, List[re.Pattern]]) -> Set[str]:
+def match_techs(title: str, patterns: dict[str, list[re.Pattern]]) -> set[str]:
     if not title:
         return set()
     return {tech for tech, pat in _compiled(patterns).items() if pat.search(title)}
 
 
 def classify_stories(session: Session,
-                     patterns: Dict[str, List[re.Pattern]] = PATTERNS,
+                     patterns: dict[str, list[re.Pattern]] = PATTERNS,
                      batch_size: int = 1000,
                      dry_run: bool = False) -> int:
     tech_id_by_name = {name: t.id for name, t in ensure_techs(session, patterns.keys()).items()}
     compiled = _compiled(patterns)
 
-    existing: Dict[int, Set[int]] = {}
+    existing: dict[int, set[int]] = {}
     for story_id, tech_id in session.execute(select(story_tech.c.story_id, story_tech.c.tech_id)):
         existing.setdefault(story_id, set()).add(tech_id)
 
@@ -84,16 +87,12 @@ def parse_args():
     p.add_argument("-d", "--db", required=True, help="DB URL (например, sqlite:///hn.db)")
     return p.parse_args()
 
+@cli_main
 def main() -> int:
     args = parse_args()
-    try:
-        with session_scope(args.db) as session:
-            changed = classify_stories(session, dry_run=False)
-            print("Обновлено историй:", changed)
-        return 0
-    except Exception as e:
-        print(f"Ошибка: {e}")
-        return 1
+    with session_scope(args.db) as session:
+        print("Обновлено историй:", classify_stories(session))
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

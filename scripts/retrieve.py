@@ -1,21 +1,18 @@
-import sys
-import requests
-import json
 import argparse
 import gzip
-import os
 import itertools
+import json
+import os
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from time import perf_counter
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
 from hackernews_retriever import HNRetriever
+from utils.cli import cli_main
 
 
 def make_session(workers: int) -> requests.Session:
@@ -31,17 +28,15 @@ def make_session(workers: int) -> requests.Session:
     session.mount("http://", adapter)
     return session
 
-def iter_hn_ids(start_id=None, end_id=None, session=None):
-    sess = session or requests
+def iter_hn_ids(start_id=None, end_id=None, session=None, retriever=None):
+    """ID от start_id до end_id включительно (в любую сторону); по умолчанию — от maxitem до 1."""
     if start_id is None or end_id is None:
-        r = sess.get("https://hacker-news.firebaseio.com/v0/maxitem.json", timeout=10)
-        r.raise_for_status()
-        max_id = r.json()
+        max_id = (retriever or HNRetriever()).get_maxitem_id(session)
         start_id = start_id or max_id
         end_id = end_id or 1
     step = 1 if start_id <= end_id else -1
-    for i in range(start_id, end_id + step, step):
-        yield i
+    yield from range(start_id, end_id + step, step)
+
 
 def download_items_streaming(id_iter,
                              retriever,
@@ -49,42 +44,43 @@ def download_items_streaming(id_iter,
                              workers=16,
                              compress=True,
                              progress_every=10000):
-    opener = gzip.open if compress else open
-    mode = "wt" if compress else "w"
-
     start = perf_counter()
     saved = 0
     errors = 0
     total_seen = 0
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    opener = gzip.open if compress else open
 
-    with opener(out_path, mode, encoding="utf-8") as f, make_session(workers) as session:
-        with ThreadPoolExecutor(max_workers=workers) as ex:
-            # Держим в работе ~2 задачи на поток, чтобы потоки не простаивали между выдачами
-            pending = {ex.submit(retriever.retrieve_item, item_id, session): item_id
-                       for item_id in itertools.islice(id_iter, workers * 2)}
+    with (
+        opener(out_path, "wt", encoding="utf-8") as f,
+        make_session(workers) as session,
+        ThreadPoolExecutor(max_workers=workers) as ex,
+    ):
+        # Держим в работе ~2 задачи на поток, чтобы потоки не простаивали между выдачами
+        pending = {ex.submit(retriever.retrieve_item, item_id, session)
+                   for item_id in itertools.islice(id_iter, workers * 2)}
 
-            while pending:
-                done, _ = wait(pending, return_when=FIRST_COMPLETED)
-                for fut in done:
-                    item_id = pending.pop(fut)
-                    total_seen += 1
-                    try:
-                        item = fut.result()
-                        if item:
-                            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-                            saved += 1
-                    except Exception:
-                        errors += 1
+        while pending:
+            done, pending = wait(pending, return_when=FIRST_COMPLETED)
+            for fut in done:
+                total_seen += 1
+                try:
+                    item = fut.result()
+                    if item:
+                        f.write(json.dumps(item, ensure_ascii=False) + "\n")
+                        saved += 1
+                except Exception:
+                    errors += 1
 
-                    next_id = next(id_iter, None)
-                    if next_id is not None:
-                        pending[ex.submit(retriever.retrieve_item, next_id, session)] = next_id
+                next_id = next(id_iter, None)
+                if next_id is not None:
+                    pending.add(ex.submit(retriever.retrieve_item, next_id, session))
 
-                    if progress_every and (total_seen % progress_every == 0):
-                        elapsed = perf_counter() - start
-                        rate = saved / elapsed if elapsed > 0 else 0.0
-                        print(f"[seen={total_seen}] saved={saved} errors={errors} "
-                              f"elapsed={elapsed:.1f}s rate={rate:.1f} items/s")
+                if progress_every and (total_seen % progress_every == 0):
+                    elapsed = perf_counter() - start
+                    rate = saved / elapsed if elapsed > 0 else 0.0
+                    print(f"[seen={total_seen}] saved={saved} errors={errors} "
+                          f"elapsed={elapsed:.1f}s rate={rate:.1f} items/s")
 
     elapsed = perf_counter() - start
     size_bytes = os.path.getsize(out_path)
@@ -97,15 +93,9 @@ def download_items_streaming(id_iter,
         "out_path": out_path,
     }
 
-def retrieve(path, ids):
-    retriever = HNRetriever()
-    stats = download_items_streaming(ids, retriever, out_path=path, workers=32, compress=True)
-    print(stats)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        prog="hn_retrieve",
+        prog="retrieve",
         description="Загрузка элементов Hacker News (items) в JSONL(.gz) файл"
     )
     parser.add_argument(
@@ -146,36 +136,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+@cli_main
 def main() -> int:
     args = parse_args()
-
     if args.workers < 1:
-        print("workers должен быть >= 1", file=sys.stderr)
-        return 2
+        raise ValueError("workers должен быть >= 1")
 
-    try:
-        retriever = HNRetriever()
-        ids = iter_hn_ids(args.start_id, args.end_id)
-        stats = download_items_streaming(
-            ids,
-            retriever,
-            out_path=args.out,
-            workers=args.workers,
-            compress=args.compress,
-            progress_every=args.progress_every,
-        )
-        print(
-            f"Done: saved={stats['saved']} seen={stats['seen']} errors={stats['errors']} "
-            f"elapsed={stats['elapsed']:.1f}s size={stats['size_bytes']}B out={stats['out_path']}"
-        )
-        return 0
-    except KeyboardInterrupt:
-        print("Остановлено пользователем (Ctrl+C)", file=sys.stderr)
-        return 130
-    except Exception as e:
-        print(f"Ошибка: {e}", file=sys.stderr)
-        return 1
+    retriever = HNRetriever()
+    stats = download_items_streaming(
+        iter_hn_ids(args.start_id, args.end_id, retriever=retriever),
+        retriever,
+        out_path=args.out,
+        workers=args.workers,
+        compress=args.compress,
+        progress_every=args.progress_every,
+    )
+    print(
+        f"Готово: сохранено={stats['saved']} просмотрено={stats['seen']} ошибок={stats['errors']} "
+        f"время={stats['elapsed']:.1f}s размер={stats['size_bytes']}B файл={stats['out_path']}"
+    )
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
