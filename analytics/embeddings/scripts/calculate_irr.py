@@ -2,15 +2,9 @@ import re
 import argparse
 import pandas as pd
 import numpy as np
-from pathlib import Path
+import statsmodels.api as sm
 from gensim.models import Word2Vec
 from itertools import combinations
-from sklearn.linear_model import PoissonRegressor
-from sklearn.preprocessing import StandardScaler
-import warnings
-warnings.filterwarnings('ignore')
-from db.queries import iter_tech_names
-from db.session import session_scope
 from analytics.embeddings.patterns import PATTERNS
 from utils.groups import categories as RAW_CATEGORIES  # <-- прямой импорт категорий
 
@@ -142,6 +136,29 @@ def title_stats_vecmap(xs: list[str], vec_map: dict[str, np.ndarray]):
     return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
 
 
+def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
+    """
+    GLM для числа комментариев. По умолчанию — отрицательная биномиальная (NB2):
+    число комментариев сильно сверхдисперсно, и у Пуассона ошибки занижены.
+    """
+    X = sm.add_constant(X, has_constant="add")
+    xtx = X.T.to_numpy() @ X.to_numpy()
+    rank = np.linalg.matrix_rank(xtx)
+    if rank < X.shape[1]:
+        print(f"Warning: матрица признаков вырождена (ранг {rank} из {X.shape[1]}): "
+              "часть коэффициентов и их ошибки неидентифицируемы")
+    poisson = sm.GLM(y, X, family=sm.families.Poisson())
+    if family == "poisson":
+        # Робастные (sandwich) ошибки не требуют предположения var = mean
+        return poisson.fit(cov_type="HC0"), None
+
+    mu = poisson.fit().mu
+    # Оценка alpha по Cameron & Trivedi: ((y - mu)^2 - y) / mu = alpha * mu + e (МНК без константы)
+    alpha = float(np.sum((y - mu) ** 2 - y) / np.sum(mu ** 2))
+    alpha = max(alpha, 1e-8)
+    return sm.GLM(y, X, family=sm.families.NegativeBinomial(alpha=alpha)).fit(), alpha
+
+
 def parse_args():
     p = argparse.ArgumentParser(
         prog="calculate_irr",
@@ -150,10 +167,10 @@ def parse_args():
     p.add_argument("-m", "--model", required=True, help="Path to model")
     p.add_argument("-i", "--input", required=True, help="Path to input file")
     p.add_argument("-o", "--output", required=True, help="Path to output file")
-    p.add_argument("--db", help="Database connection string", default=None)
-    p.add_argument("--limit", type=int, help="Limit for tech names", default=None)
     p.add_argument("--sample", type=int, help="Sample N rows (for testing)", default=None)
     p.add_argument("--max-rows", type=int, help="Maximum rows to process", default=500000)
+    p.add_argument("--family", choices=["negbin", "poisson"], default="negbin",
+                   help="Семейство GLM: negbin (по умолчанию) или poisson с робастными ошибками")
 
     # Новый флаг групп
     p.add_argument("--groups", action="store_true",
@@ -184,21 +201,15 @@ def main() -> int:
             print(f"Sampling {args.sample} rows...")
             df = df.sample(n=min(args.sample, len(df)), random_state=42).copy()
 
+        # После фильтрации/выборки индекс идёт с пропусками; признаки ниже
+        # собираются как по меткам (Series), так и по позиции (списки), поэтому
+        # индекс должен быть позиционным.
+        df = df.reset_index(drop=True)
+
         print(f"Processing {len(df)} rows...")
 
         print("Loading Word2Vec model...")
         w2v = Word2Vec.load(args.model)
-
-        # (Необязательная) подкачка сидов из БД — как и раньше
-        try:
-            seed_tech = []
-            with session_scope(args.db) as session:
-                rows = iter_tech_names(session, limit=args.limit)
-                for _, name in rows:
-                    seed_tech.append(name)
-        except:
-            seed_tech = ['python','javascript','react','kubernetes','docker','postgresql',
-                'redis','csharp','dotnet','java','go','rust','swift','android']
 
         print("Extracting technologies from titles...")
         df['tech_list'] = df['title'].apply(extract_tech_regex)
@@ -288,25 +299,27 @@ def main() -> int:
 
         feature_data['sim_min'] = sim_df['sim_min'].astype(np.float32)
         feature_data['sim_mean'] = sim_df['sim_mean'].astype(np.float32)
-        feature_data['sim_max'] = sim_df['sim_max'].astype(np.float32)
         del sim_df
 
-        feature_data['techs_count'] = df['n_tech'].astype(np.int8)
+        # Общее число технологий = сумма has_* + технологии вне топа. С has_* в модели
+        # полный techs_count был бы (почти) линейно зависим от них и делал бы
+        # матрицу вырожденной, поэтому контролируем только технологии вне топа.
+        top_set = set(top_tech)
+        feature_data['other_techs_count'] = df['tech_list'].apply(
+            lambda xs: sum(1 for t in xs if t not in top_set)
+        ).astype(np.int8)
 
-        features_df = pd.DataFrame(feature_data, index=df.index)
+        features_df = pd.DataFrame(feature_data)
         del feature_data
 
         print("Preparing regression features...")
-        feature_cols = ['techs_count', 'sim_min', 'sim_mean'] + \
+        feature_cols = ['other_techs_count', 'sim_min', 'sim_mean'] + \
                        [f'has_{t}' for t in top_tech] + \
                        [f'has_pair_{a}__{b}' for (a, b) in top_pairs]
 
-        X = features_df[feature_cols].values
-        y = df['descendants'].values
-
-        # Validation
-        print("Validating data...")
-        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+        X = features_df[feature_cols].astype(np.float64)
+        X = X.replace([np.inf, -np.inf], 0.0).fillna(0.0)
+        y = df['descendants'].to_numpy(dtype=np.float64)
 
         valid_mask = (y >= 0) & np.isfinite(y)
         if not valid_mask.all():
@@ -314,49 +327,30 @@ def main() -> int:
             X = X[valid_mask]
             y = y[valid_mask]
 
-        print(f"Final dataset: {len(X)} rows, {X.shape[1]} features")
-        print(f"X stats: min={X.min():.4f}, max={X.max():.4f}")
-        print(f"y stats: min={y.min():.2f}, max={y.max():.2f}, mean={y.mean():.2f}")
+        # Постоянный признак (например, sim_* когда нет заголовков с 2+ технологиями)
+        # неотличим от константы и даёт бессмысленные ошибки
+        constant_cols = [c for c in X.columns if X[c].nunique() <= 1]
+        if constant_cols:
+            print(f"Dropping constant features: {', '.join(constant_cols)}")
+            X = X.drop(columns=constant_cols)
 
-        print("Fitting Poisson regression (sklearn)...")
-        model = PoissonRegressor(alpha=0.1, max_iter=300, verbose=1)
-        model.fit(X, y)
+        print(f"Final dataset: {len(X)} rows, {X.shape[1]} features")
+        print(f"y stats: min={y.min():.2f}, max={y.max():.2f}, mean={y.mean():.2f}, var={y.var():.2f}")
+
+        print(f"Fitting GLM ({args.family})...")
+        result, alpha = fit_count_model(X, y, args.family)
+        if alpha is not None:
+            print(f"Estimated NB dispersion alpha={alpha:.4f}")
 
         print("Computing IRR and confidence intervals...")
-        coefs = model.coef_
-        intercept = model.intercept_
-
-        all_coefs = np.concatenate([[intercept], coefs])
-        feature_names = ['const'] + feature_cols
-
-        predictions = model.predict(X)
-        variance = predictions  # For Poisson, variance = mean
-        weights = 1.0 / (variance + 1e-10)
-
-        X_with_const = np.column_stack([np.ones(len(X)), X])
-        hessian_approx = X_with_const.T @ (weights[:, None] * X_with_const)
-
-        try:
-            cov_matrix = np.linalg.inv(hessian_approx)
-            se = np.sqrt(np.diag(cov_matrix))
-        except:
-            print("Warning: Could not compute standard errors, using approximation")
-            se = np.abs(all_coefs) * 0.1  # Rough approximation
-
-        z_scores = all_coefs / (se + 1e-10)
-        from scipy import stats
-        p_values = 2 * (1 - stats.norm.cdf(np.abs(z_scores)))
-
-        conf_low = all_coefs - 1.96 * se
-        conf_high = all_coefs + 1.96 * se
-
+        ci = result.conf_int(alpha=0.05)
         coef_df = pd.DataFrame({
-            'feature': feature_names,
-            'coef': all_coefs,
-            'se': se,
-            'pval': p_values,
-            'conf_low': conf_low,
-            'conf_high': conf_high,
+            'feature': result.params.index,
+            'coef': result.params.values,
+            'se': result.bse.values,
+            'pval': result.pvalues.values,
+            'conf_low': ci[0].values,
+            'conf_high': ci[1].values,
         })
         coef_df['IRR'] = np.exp(coef_df['coef'])
         coef_df['IRR_low'] = np.exp(coef_df['conf_low'])

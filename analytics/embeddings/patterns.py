@@ -14,14 +14,15 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bspring\s+boot\b")
     ],
     "javascript": [
-        _re(r"\bjavascript\b"), _re(r"\bnode(?:\.?js)?\b"), _re(r"\bdeno\b"),
+        _re(r"\bjavascript\b"), _re(r"\bnode\.?js\b"), _re(r"\bdeno\b"),
         _re(r"\bvue\.js\b"), _re(r"\bnext\.js\b"), _re(r"\bnpm\b"), _re(r"\byarn\b")
     ],
     "typescript": [
         _re(r"\btypescript\b"), _re(r"\btsconfig\b"), _re(r"\bts-node\b"), _re(r"\.ts\b")
     ],
     "rust": [
-        _re(r"\brust\b"), _re(r"\bcargo\b"), _re(r"\bcrates?\.?io\b"), _re(r"\.rs\b"),
+        _re(r"\brust\b"), _re(r"\bcargo\s+(?:build|run|test|install|add|publish)\b"),
+        _re(r"\bcargo\.toml\b"), _re(r"\bcrates\.io\b"), _re(r"\.rs\b"),
         _re(r"\bborrow\s+checker\b")
     ],
     "go": [
@@ -34,16 +35,22 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\.rb\b")
     ],
     "php": [
-        _re(r"\bphp\b"), _re(r"\bcomposer\b"), _re(r"\blaravel\b"), _re(r"\.php\b")
+        _re(r"\bphp\b"), _re(r"\bcomposer\.(?:json|lock)\b"), _re(r"\blaravel\b"), _re(r"\.php\b")
     ],
+    # После "#", "+" и "." граница \b срабатывает только перед буквой/цифрой,
+    # поэтому для C#, C++ и .NET используются явные lookaround-ы.
     "csharp": [
-        _re(r"\bC#\b"), _re(r"\bcsharp\b"), _re(r"\b\.?dotnet\b"), _re(r"\b\.NET\b")
+        _re(r"(?<!\w)C#(?![\w#])"), _re(r"\bcsharp\b"), _re(r"\bdotnet\b"),
+        _re(r"(?<![\w.])\.NET\b"), _re(r"\b(?:asp|ado)\.NET\b")
     ],
     "cpp": [
-        _re(r"\bC\+\+\b"), _re(r"\bc\+\+\d{2}\b"), _re(r"\bcpp\b"), _re(r"\bcxx\b"), _re(r"\bc++\b")
+        _re(r"(?<!\w)C\+\+(?!\+)"), _re(r"\bcpp\b"), _re(r"\bcxx\b")
     ],
     "c": [
-        _re(r"\bC(?:\s*language|11|17|99)\b"), _re(r"\blibc\b"), _re(r"\bclang\b"), _re(r"\bgcc\b")
+        _re(r"\bC(?:\s*language|11|17|23|99)\b"),
+        _re(r"\b(?:in|with|written\s+in|rewritten\s+in|to)\s+C(?![\w+#.])"),
+        _re(r"\bC\s+(?:and|or|vs\.?|/)\s+C\+\+"),
+        _re(r"\blibc\b"), _re(r"\bclang\b"), _re(r"\bgcc\b")
     ],
     "kotlin": [
         _re(r"\bkotlin\b"), _re(r"\.kt\b"), _re(r"\.kts\b"), _re(r"\bkotlinx\b"), _re(r"\bktor\b")
@@ -56,22 +63,24 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bscala\b"), _re(r"\.scala\b"), _re(r"\bsbt\b"), _re(r"\backa\b")
     ],
     "haskell": [
-        _re(r"\bhaskell\b"), _re(r"\bghc\b"), _re(r"\bcabal\b"), _re(r"\bstack\b")
+        _re(r"\bhaskell\b"), _re(r"\bghc\b"), _re(r"\bcabal\b"),
+        _re(r"\bstack\s+(?:build|exec|ghci|install)\b")
     ],
     "elixir": [
-        _re(r"\belixir\b"), _re(r"\bphoenix\s+framework\b"), _re(r"\bmix\s+\w+"), _re(r"\bbeam\b")
+        _re(r"\belixir\b"), _re(r"\bphoenix\s+framework\b"),
+        _re(r"\bmix\s+(?:phx|deps|test|compile|release|format|new)\b"), _re(r"\bbeam\s+vm\b")
     ],
     "erlang": [
-        _re(r"\berlang\b"), _re(r"\botp\b"), _re(r"\bbeam\b")
+        _re(r"\berlang\b"), _re(r"\berlang/otp\b"), _re(r"\bbeam\s+vm\b")
     ],
     "dart": [
-        _re(r"\bdart\b"), _re(r"\bflutter\b"), _re(r"\.dart\b")
+        _re(r"\bdart\s*(?:lang|language|\d)\b"), _re(r"\bflutter\b"), _re(r"\.dart\b")
     ],
     "julia": [
         _re(r"\bjulia\b"), _re(r"\.jl\b"), _re(r"\bjuliacon\b")
     ],
     "matlab": [
-        _re(r"\bmatlab\b"), _re(r"\boctave\b")
+        _re(r"\bmatlab\b"), _re(r"\bgnu\s+octave\b")
     ],
     "shell": [
         _re(r"\bbash\b"), _re(r"\bzsh\b"), _re(r"\bfish\s+shell\b"),
@@ -82,16 +91,16 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bubuntu\b"), _re(r"\bdebian\b"), _re(r"\bfedora\b"), _re(r"\bcentos\b"),
         _re(r"\brhel\b"), _re(r"\balma\s*linux\b"), _re(r"\brocky\s*linux\b"),
         _re(r"\bopensuse\b"), _re(r"\bsles\b"),
-        _re(r"\barch\b"), _re(r"\bmanjaro\b"), _re(r"\bmint\b"),
+        _re(r"\barch\s*linux\b"), _re(r"\bmanjaro\b"), _re(r"\blinux\s+mint\b"),
         _re(r"\bgentoo\b"), _re(r"\bnixos\b"),
-        _re(r"\bkali\b"), _re(r"\braspbian\b"), _re(r"\braspberry\s*pi\s*os\b"),
+        _re(r"\bkali\s+linux\b"), _re(r"\braspbian\b"), _re(r"\braspberry\s*pi\s*os\b"),
     ],
     "docker": [
         _re(r"\bdocker\b")
     ],
     "r": [
         _re(r"\bRStudio\b"), _re(r"\btidyverse\b"), _re(r"\bggplot2\b"), _re(r"\bCRAN\b"),
-        _re(r"\bdplyr\b"), _re(r"\bdata\.table\b"), _re(r"\bshiny\b"), _re(r"\.R\b")
+        _re(r"\bdplyr\b"), _re(r"\bdata\.table\b"), _re(r"\bR\s+shiny\b"), _re(r"\.R\b")
     ],
     "gpt": [
         _re(r"\bchatgpt\b"),
@@ -148,7 +157,8 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "whisper": [
         _re(r"\bopenai\s+whisper\b"),
-        _re(r"\bwhisper\b"),
+        _re(r"\bwhisper(?:\.cpp|x)\b"),
+        _re(r"\bwhisper\s+(?:model|large|medium|small|tiny)\b"),
     ],
     "clip": [
         _re(r"\bopenai\s+clip\b"),
@@ -172,7 +182,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "sam": [
         _re(r"\bsegment\s+anything\b"),
-        _re(r"\bsam2?\b"),
+        _re(r"\bsam[-\s]?2\b"),
     ],
     "bert_family": [
         _re(r"\bbert\b"),
@@ -188,7 +198,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bt5\b"),
     ],
     "bart": [
-        _re(r"\bbart\b"),
+        _re(r"\bbart[-\s](?:large|base|model)\b"),
     ],
     "gpt_neo_family": [
         _re(r"\bgpt[-\s]?neo\b"),
@@ -200,7 +210,8 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bfalcon[-\s]?(?:7b|40b|180b)\b"),
     ],
     "bloom": [
-        _re(r"\bbloom(?:[-\s]?z)?\b"),
+        _re(r"\bbloomz\b"),
+        _re(r"\bbloom[-\s]?(?:176b|7b|llm|model)\b"),
         _re(r"\bbigscience\b"),
     ],
     "rwkv": [
@@ -252,12 +263,11 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bt[-\s]?sql\b"),
     ],
     "snowflake": [
-        _re(r"\bsnowflake\b"),
+        _re(r"\bsnowflake\b(?!\s+ids?\b)"),
         _re(r"\bsnowpark\b"),
     ],
     "redshift": [
-        _re(r"\baws\s+redshift\b"),
-        _re(r"\bredshift\b"),
+        _re(r"\b(?:aws|amazon)\s+redshift\b"),
     ],
     "bigquery": [
         _re(r"\bbigquery\b"),
@@ -284,7 +294,6 @@ PATTERNS: Dict[str, List[Pattern]] = {
     "redis": [
         _re(r"\bredis\b"),
         _re(r"\bredis-cli\b"),
-        _re(r"\bsentinel\b"),
     ],
     "valkey": [
         _re(r"\bvalkey\b"),
@@ -320,14 +329,14 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "hive": [
         _re(r"\bapache\s+hive\b"),
-        _re(r"\bhive\b"),
+        _re(r"\bhiveql\b"),
     ],
     "aerospike": [
         _re(r"\baerospike\b"),
     ],
     "influxdb": [
         _re(r"\binfluxdb\b"),
-        _re(r"\binflux\b"),
+        _re(r"\binfluxql\b"),
     ],
     "timescaledb": [
         _re(r"\btimescaledb\b"),
@@ -340,11 +349,9 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "pinot": [
         _re(r"\bapache\s+pinot\b"),
-        _re(r"\bpinot\b"),
     ],
     "druid": [
         _re(r"\bapache\s+druid\b"),
-        _re(r"\bdruid\b"),
     ],
     "trino": [
         _re(r"\btrino\b"),
@@ -354,7 +361,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "cockroachdb": [
         _re(r"\bcockroachdb\b"),
-        _re(r"\bcockroach\b"),
+        _re(r"\bcockroach\s+labs\b"),
     ],
     "tidb": [
         _re(r"\btidb\b"),
@@ -412,7 +419,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
     ],
     "perforce": [
         _re(r"\bperforce\b"),
-        _re(r"\bp4\b"),
+        _re(r"\bp4v\b"),
         _re(r"\bhelix\s+core\b"),
     ],
     "bazaar": [
@@ -420,8 +427,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bbzr\b"),
     ],
     "fossil": [
-        _re(r"\bfossil\s+scm\b"),
-        _re(r"\bfossil\b"),
+        _re(r"\bfossil\s+(?:scm|vcs)\b"),
     ],
     "windows": [
         _re(r"\bwindows\b"),
@@ -433,7 +439,7 @@ PATTERNS: Dict[str, List[Pattern]] = {
         _re(r"\bmacos\b"),
         _re(r"\bmac\s*os\b"),
         _re(r"\bos\s*x\b"),
-        _re(r"\bdarwin\b"),
+        _re(r"\bdarwin\s+kernel\b"),
     ],
     "ios": [
         _re(r"\b(?:ios|ipados|watchos|tvos)\b"),

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -29,6 +29,8 @@ class Story(Base):
     title: Mapped[Optional[str]] = mapped_column(String)
     url: Mapped[Optional[str]] = mapped_column(String)
     kids: Mapped[list[int]] = mapped_column(JSON, default=list)
+    dead: Mapped[Optional[bool]] = mapped_column(Boolean)
+    deleted: Mapped[Optional[bool]] = mapped_column(Boolean)
 
     techs: Mapped[List["Tech"]] = relationship(
         secondary=story_tech,
@@ -48,6 +50,8 @@ class Comment(Base):
     parent: Mapped[Optional[int]] = mapped_column(Integer)
     time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     text: Mapped[Optional[str]] = mapped_column(String)
+    dead: Mapped[Optional[bool]] = mapped_column(Boolean)
+    deleted: Mapped[Optional[bool]] = mapped_column(Boolean)
 
     def __repr__(self) -> str:
         return f"Comment(id={self.id!r}, author={self.author!r}, time={self.time!r})"

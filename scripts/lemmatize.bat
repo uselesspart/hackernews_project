@@ -15,16 +15,13 @@ if "%~1"=="" (
 if not defined VENV_DIR set "VENV_DIR=venv"
 if not defined COMMENTS_LEM set "COMMENTS_LEM=artifacts/tech"
 
-:: Prefer py -3, fallback to python
-set "PY_CMD=py -3"
-where py >nul 2>&1 || set "PY_CMD=python"
-
-:: Activate venv if it exists (Windows)
-if exist "%VENV_DIR%\Scripts\activate.bat" (
-  call "%VENV_DIR%\Scripts\activate.bat"
+:: Python из venv, если он есть; иначе системный (py -3 или python)
+if exist "%VENV_DIR%\Scripts\python.exe" (
+  set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
+) else (
+  set "PY_CMD=py -3"
+  where py >nul 2>&1 || set "PY_CMD=python"
 )
-
-set "PY_CMD=%VENV_DIR%\Scripts\python.exe"
 
 :: Установка переменных входной и выходной папок
 set "IN_DIR=%~1"
@@ -44,10 +41,6 @@ if not exist "%IN_DIR%\" (
 if not exist "%OUT_DIR%\" (
   mkdir "%OUT_DIR%"
 )
-
-:: Выбираем команду для запуска Python: предпочитаем "py -3", если нет — "python"
-set "PY_CMD=py -3"
-where py >nul 2>&1 || set "PY_CMD=python"
 
 echo Input dir: %IN_DIR%
 echo Output dir: %OUT_DIR%

@@ -7,6 +7,8 @@ REM Relationship map pipeline (Windows .bat equivalent of scripts/bash/rel_map.s
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
 set "ROOT_DIR=%CD%\bin"
+:: В репозитории (без папки bin) корень проекта - сама папка
+if not exist "%ROOT_DIR%\scripts\" set "ROOT_DIR=%CD%"
 popd >nul 2>&1
 if not exist "%ROOT_DIR%\scripts\" (
   echo Не удалось найти корень проекта: ожидается папка 'scripts' в %ROOT_DIR%

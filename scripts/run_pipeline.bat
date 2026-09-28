@@ -12,6 +12,7 @@ set "RAW_OUT=raw_data\hn_data.jsonl.gz"
 set "BATCH_SIZE=1000"
 set "CTX_OUT=artifacts\sentences\context.txt"
 set "CTX_LEM=artifacts\sentences\context_lem.txt"
+set "CTX_TOKENS=artifacts\embeddings\words\context.tokens.jsonl.gz"
 
 where %PYTHON_BIN% >nul 2>&1
 if errorlevel 1 (
@@ -48,7 +49,7 @@ echo Lemmatizing...
 python -m analytics.embeddings.scripts.lemmatize_file -i "%CTX_OUT%" -o "%CTX_LEM%"
 
 echo Sentences to vectors...
-python -m analytics.embeddings.scripts.sentences_to_vectors -i "%CTX_LEM%"
+python -m analytics.embeddings.scripts.sentences_to_vectors -i "%CTX_LEM%" -o "%CTX_TOKENS%"
 
 echo Pipeline finished successfully.
 endlocal

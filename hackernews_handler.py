@@ -8,7 +8,12 @@ from html import unescape
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from db.models import Base, Story, Comment
+from db.models import Story, Comment
+from db.session import upgrade_schema
+
+STORY_UPDATE_COLS = ("author", "descendants", "score", "time", "title", "url", "kids", "dead", "deleted")
+COMMENT_UPDATE_COLS = ("author", "parent", "time", "text", "dead", "deleted")
+
 
 class HNHandler:
     def __init__(self, engine, batch_size: int = 1000):
@@ -18,7 +23,7 @@ class HNHandler:
         self.create_schema()
 
     def create_schema(self) -> None:
-        Base.metadata.create_all(self.engine)
+        upgrade_schema(self.engine)
 
 
     def ingest_from_path(self, path: str | Path) -> dict[str, int]:
@@ -74,6 +79,8 @@ class HNHandler:
             "title": item.get("title"),
             "url": item.get("url"),
             "kids": item.get("kids", []) or [],
+            "dead": bool(item.get("dead", False)),
+            "deleted": bool(item.get("deleted", False)),
         }
 
     def _comment_row(self, item: dict) -> Optional[dict]:
@@ -89,101 +96,32 @@ class HNHandler:
             "parent": item.get("parent"),
             "time": dt,
             "text": text,
+            "dead": bool(item.get("dead", False)),
+            "deleted": bool(item.get("deleted", False)),
         }
 
     def _upsert_comments(self, session, rows: list[dict]) -> int:
-        tbl = Comment.__table__
-        dialect = session.bind.dialect.name
-        if dialect == "sqlite":
-            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-            stmt = sqlite_insert(tbl).values(rows)
-            excluded = stmt.excluded
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[tbl.c.id],
-                set_={
-                    "author": excluded.author,
-                    "parent": excluded.parent,
-                    "time":   excluded.time,
-                    "text":   excluded.text,
-                },
-            )
-        elif dialect == "postgresql":
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-            stmt = pg_insert(tbl).values(rows)
-            excluded = stmt.excluded
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[tbl.c.id],
-                set_={
-                    "author": excluded.author,
-                    "parent": excluded.parent,
-                    "time":   excluded.time,
-                    "text":   excluded.text,
-                },
-            )
-        elif dialect in ("mysql", "mariadb"):
-            from sqlalchemy.dialects.mysql import insert as my_insert
-            ins = my_insert(tbl).values(rows)
-            stmt = ins.on_duplicate_key_update(
-                author=ins.inserted.author,
-                parent=ins.inserted.parent,
-                time=ins.inserted.time,
-                text=ins.inserted.text,
-            )
-        else:
-            stmt = tbl.insert().values(rows)
-
-        res = session.execute(stmt)
-        session.commit()
-        return res.rowcount
-
+        return self._upsert(session, Comment.__table__, rows, COMMENT_UPDATE_COLS)
 
     def _upsert_stories(self, session, rows: list[dict]) -> int:
-        tbl = Story.__table__
+        return self._upsert(session, Story.__table__, rows, STORY_UPDATE_COLS)
+
+    def _upsert(self, session, tbl, rows: list[dict], update_cols: tuple[str, ...]) -> int:
         dialect = session.bind.dialect.name
-        if dialect == "sqlite":
-            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-            stmt = sqlite_insert(tbl).values(rows)
-            excluded = stmt.excluded
+        if dialect in ("sqlite", "postgresql"):
+            if dialect == "sqlite":
+                from sqlalchemy.dialects.sqlite import insert as dialect_insert
+            else:
+                from sqlalchemy.dialects.postgresql import insert as dialect_insert
+            stmt = dialect_insert(tbl).values(rows)
             stmt = stmt.on_conflict_do_update(
                 index_elements=[tbl.c.id],
-                set_={
-                    "author":      excluded.author,
-                    "descendants": excluded.descendants,
-                    "score":       excluded.score,
-                    "time":        excluded.time,
-                    "title":       excluded.title,
-                    "url":         excluded.url,
-                    "kids":        excluded.kids,
-                },
-            )
-        elif dialect == "postgresql":
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-            stmt = pg_insert(tbl).values(rows)
-            excluded = stmt.excluded
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[tbl.c.id],
-                set_={
-                    "author":      excluded.author,
-                    "descendants": excluded.descendants,
-                    "score":       excluded.score,
-                    "time":        excluded.time,
-                    "title":       excluded.title,
-                    "url":         excluded.url,
-                    "kids":        excluded.kids,
-                },
+                set_={c: stmt.excluded[c] for c in update_cols},
             )
         elif dialect in ("mysql", "mariadb"):
             from sqlalchemy.dialects.mysql import insert as my_insert
             ins = my_insert(tbl).values(rows)
-            stmt = ins.on_duplicate_key_update(
-                author=ins.inserted.author,
-                descendants=ins.inserted.descendants,
-                score=ins.inserted.score,
-                time=ins.inserted.time,
-                title=ins.inserted.title,
-                url=ins.inserted.url,
-                kids=ins.inserted.kids,
-            )
+            stmt = ins.on_duplicate_key_update({c: ins.inserted[c] for c in update_cols})
         else:
             stmt = tbl.insert().values(rows)
 

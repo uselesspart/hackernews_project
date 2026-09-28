@@ -10,17 +10,39 @@ try:
 except Exception:
     _en_nlp = None
 
-WORD_PATTERN = re.compile(r"[A-Za-zА-Яа-яЁё]+(?:['-][A-Za-zА-Яа-яЁё]+)*|\d+")
-TOKEN_PATTERN = re.compile(r"[A-Za-zА-Яа-яЁё]+(?:['-][A-Za-zА-Яа-яЁё]+)*|\d+|[^\w\s]")
-SPLIT_RE = re.compile(r"[-']")
+WORD_PATTERN = re.compile(r"[A-Za-zА-Яа-яЁё]+(?:['_-][A-Za-zА-Яа-яЁё]+)*|\d+")
+TOKEN_PATTERN = re.compile(r"[A-Za-zА-Яа-яЁё]+(?:['_-][A-Za-zА-Яа-яЁё]+)*|\d+|[^\w\s]")
+
+# Названия технологий, которые WORD_PATTERN иначе разрушает ("c++" -> "c",
+# ".net" -> "net"), заменяются до токенизации на токены, совпадающие
+# с каноническими именами из patterns.py / utils.groups.
+TECH_SUBSTITUTIONS = [
+    (re.compile(r"(?<!\w)c\+\+(?!\+)", re.IGNORECASE), " cpp "),
+    (re.compile(r"(?<!\w)c#(?![\w#])", re.IGNORECASE), " csharp "),
+    (re.compile(r"(?<!\w)f#(?![\w#])", re.IGNORECASE), " fsharp "),
+    (re.compile(r"\b(?:asp|ado)\.net\b", re.IGNORECASE), " dotnet "),
+    (re.compile(r"(?<![\w.])\.net\b", re.IGNORECASE), " dotnet "),
+    (re.compile(r"\b(node|vue|next|react)\.js\b", re.IGNORECASE), r" \1js "),
+    (re.compile(r"\bstable\s+diffusion\b", re.IGNORECASE), " stable_diffusion "),
+    (re.compile(r"\bsql\s+server\b", re.IGNORECASE), " sqlserver "),
+]
+TECH_TOKENS = {"cpp", "csharp", "fsharp", "dotnet", "nodejs", "vuejs", "nextjs",
+               "reactjs", "stable_diffusion", "sqlserver"}
+
+
+def canonicalize_tech_mentions(text: str) -> str:
+    for pattern, repl in TECH_SUBSTITUTIONS:
+        text = pattern.sub(repl, text)
+    return text
+
 
 # Default words to preserve (not lemmatize)
 DEFAULT_PRESERVE_WORDS = {
     # Operating systems - plural forms are significant
     "windows",
-    
-    #languages
-    "c++",
+
+    # Canonical tech tokens (see TECH_SUBSTITUTIONS)
+    *TECH_TOKENS,
 
     # Brand names / proper nouns
     "kubernetes",
@@ -34,7 +56,6 @@ DEFAULT_PRESERVE_WORDS = {
     "ios",
     "macos",
 }
-SPLIT_RE = re.compile(r"[-']")
 
 def load_preserve_words(path: Path | None) -> Set[str]:
     words = DEFAULT_PRESERVE_WORDS.copy()
@@ -56,25 +77,28 @@ def _lemmatize_en_batch(tokens: List[str], preserve_words: Set[str] | None = Non
     if preserve_words is None:
         preserve_words = set()
     
-    cache: dict[str, str] = {}
+    cache: dict[str, List[str]] = {}
     uniq, seen = [], set()
-    
+
     for t in tokens:
         if t not in seen:
             uniq.append(t)
             seen.add(t)
-    
-    if _en_nlp is not None:
-        for doc, t in zip(_en_nlp.pipe(uniq, batch_size=1000), uniq):
-            if t.lower() in preserve_words:
-                cache[t] = t
-            else:
-                cache[t] = (doc[0].lemma_ if len(doc) else t)
-    else:
-        for t in uniq:
-            cache[t] = t
-    
-    return [cache[t] for t in tokens]
+
+    for doc, t in zip(_en_nlp.pipe(uniq, batch_size=1000), uniq):
+        if t.lower() in preserve_words or len(doc) == 0:
+            cache[t] = [t]
+        elif len(doc) == 1:
+            cache[t] = [doc[0].lemma_]
+        elif "'" in t:
+            # Сокращения: "don't" -> ["do", "not"]; раньше оставалось только "do",
+            # и отрицание терялось. Притяжательное "'s" отбрасываем.
+            cache[t] = [tok.lemma_ for tok in doc if tok.lemma_ not in ("'s", "'")]
+        else:
+            # Составные слова через дефис/подчёркивание оставляем одним токеном
+            cache[t] = [t]
+
+    return [lemma for t in tokens for lemma in cache[t]]
 
 def tokenize_and_lemmatize(
     text: str,
@@ -85,9 +109,10 @@ def tokenize_and_lemmatize(
     lemmatize_en: bool = True,
     preserve_words: Set[str] | None = None,
 ) -> List[str]:
+    text = canonicalize_tech_mentions(text)
     if lower:
         text = text.lower()
-    
+
     pattern = TOKEN_PATTERN if keep_punct else WORD_PATTERN
     tokens = pattern.findall(text)
     

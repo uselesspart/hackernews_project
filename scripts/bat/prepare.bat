@@ -10,6 +10,8 @@ chcp 65001
 set "SCRIPT_DIR=%~dp0"
 pushd "%SCRIPT_DIR%\..\.." >nul 2>&1
 set "ROOT_DIR=%CD%\bin"
+:: В репозитории (без папки bin) корень проекта - сама папка
+if not exist "%ROOT_DIR%\scripts\" set "ROOT_DIR=%CD%"
 popd >nul 2>&1
 if not exist "%ROOT_DIR%\scripts\" (
   echo Не удалось найти корень проекта: ожидается папка 'scripts' в %ROOT_DIR%
@@ -176,7 +178,7 @@ if errorlevel 1 (
 )
 
 echo 16. Лемматизируем комментарии...
-call scripts\bat\lemmatize.bat "%COMMENTS_OUT%" "%COMMENTS_LEM%"
+call scripts\lemmatize.bat "%COMMENTS_OUT%" "%COMMENTS_LEM%"
 if errorlevel 1 (
   echo Ошибка при лемматизации комментариев
   exit /b 1

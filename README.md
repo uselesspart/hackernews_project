@@ -87,12 +87,11 @@
 
 Преобразуйте предложения/леммы в токены для обучения/аналитики (analytics.embeddings.scripts.sentences_to_vectors)
 
-Читает указанный TXT-файл (одна строка — один заголовок/список токенов) и формирует JSONL.GZ с токенами. Путь к входному файлу передаётся аргументом -i/--input.
+Читает указанный TXT-файл (одна строка — один заголовок/список токенов) и формирует JSONL.GZ с токенами. Пути к входному и выходному файлам передаются аргументами -i/--input и -o/--output.
 
     python3 -m analytics.embeddings.scripts.sentences_to_vectors \
-    -i artifacts/sentences/context_lem.txt
-
-Примечание: путь и имена выходных артефактов задаются реализацией класса TitleEmbedder (по умолчанию — в каталоге artifacts/embeddings/words).
+    -i artifacts/sentences/context_lem.txt \
+    -o artifacts/embeddings/words/context.tokens.jsonl.gz
 
 ## Скрипты
 Все скрипты запускаются как модули из корневой папки проекта. Пример:
@@ -142,6 +141,11 @@
     -i, --input PATH [PATH ...] — один или несколько файлов входных данных (jsonl/jsonl.gz) [обязательный].
     -b, --batch-size INT — размер пакетной вставки; по умолчанию 1000.
     --echo — включить вывод SQL-запросов SQLAlchemy.
+
+Замечания:
+
+Флаги HN dead/deleted сохраняются в таблицах story и comment; экспорт по умолчанию их отфильтровывает (см. --keep-deleted).
+В БД, созданных до появления этих колонок, они добавляются автоматически при первом подключении и остаются пустыми (NULL = не помечено) до повторного импорта.
 
 #### db.scripts.export_titles
 
@@ -262,7 +266,8 @@ JSONL: одна строка — один объект {"id": ..., "title": "...
 
 Текст автоматически очищается через функцию clean_text.
 Batch-обработка по 10,000 записей для экономии памяти.
-Комментарии агрегируются через SQL string_agg (PostgreSQL) или аналог для других СУБД.
+Агрегируются только комментарии верхнего уровня (прямые ответы на историю).
+Комментарии агрегируются через func.aggregate_strings из SQLAlchemy: string_agg в PostgreSQL, group_concat в SQLite/MySQL.
 
 #### db.scripts.export_comments_for_techs
 
@@ -426,11 +431,14 @@ Batch-обработка по 10,000 записей для экономии па
 
 Примечание:
 
+Перед токенизацией названия технологий со спецсимволами заменяются на канонические токены: C++ → cpp, C# → csharp, F# → fsharp, .NET → dotnet, Node.js → nodejs, Stable Diffusion → stable_diffusion, SQL Server → sqlserver. Эти токены не лемматизируются.
+Сокращения раскрываются в леммы: don't → do not.
+
 Для лемматизации английских слов используется модель spaCy en_core_web_sm. Установите заранее:
     pip install spacy
     python -m spacy download en_core_web_sm
 Если spaCy недоступен, используйте --no-lemmatize.
-Защищённые слова по умолчанию: windows, c++, kubernetes, jenkins, postgres, redis, aws, gcp, ios, macos.
+Защищённые слова по умолчанию: windows, kubernetes, jenkins, postgres, redis, aws, gcp, ios, macos и канонические токены технологий из примечания выше.
 
 #### analytics.embeddings.scripts.sentences_to_vectors
 
@@ -439,13 +447,15 @@ Batch-обработка по 10,000 записей для экономии па
 Аргументы:
 
     -i, --input PATH — путь к входному TXT (например, artifacts/sentences/titles_lem.txt) [обязательный].
+    -o, --output PATH — путь к выходному JSONL.GZ [обязательный].
 
 Примеры:
 
 Генерировать токены из лемматизированных заголовков
 
     python3 -m analytics.embeddings.scripts.sentences_to_vectors \
-    -i artifacts/sentences/titles_lem.txt
+    -i artifacts/sentences/titles_lem.txt \
+    -o artifacts/embeddings/words/titles.tokens.jsonl.gz
 
 Вывод:
 
@@ -456,10 +466,6 @@ Batch-обработка по 10,000 записей для экономии па
 
     0 — успешно.
     1 — ошибка (например, отсутствует входной файл).
-
-Замечания:
-
-Путь выходного файла и структура артефактов определяются реализацией TitleEmbedder. По умолчанию они размещаются в artifacts/embeddings/words.
 
 
 #### analytics.embeddings.scripts.train_model
@@ -512,7 +518,13 @@ Batch-обработка по 10,000 записей для экономии па
     -i, --input PATH — файл с метаданными статей [обязательный].
     -m, --model PATH — путь Word2Vec модели, обученной на заголовках (.model) [обязательный].
     -o, --output PATH — путь к выходному CSV файлу с коэффициентами для технологий [обязательный].
-    
+    --family {negbin,poisson} — семейство GLM; по умолчанию negbin (отрицательная биномиальная, учитывает сверхдисперсию числа комментариев); poisson считается с робастными (HC0) ошибками.
+    --groups — агрегировать технологии в группы из utils.groups.categories.
+    --sample INT — случайная подвыборка N строк (для отладки).
+    --max-rows INT — максимум строк; по умолчанию 500000.
+
+Модель строится через statsmodels. Признаки: has_<tech> для топ-50 технологий, has_pair_<a>__<b> для частых пар, sim_min/sim_mean (косинусная близость технологий в заголовке) и other_techs_count (число технологий вне топа). Постоянные признаки отбрасываются перед обучением.
+
 Пример:
 
     python3 -m analytics.embeddings.scripts.calculate_irr \

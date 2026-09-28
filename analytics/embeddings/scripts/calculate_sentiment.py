@@ -11,12 +11,18 @@ from sklearn.linear_model import LogisticRegression
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 def tokenize(text):
-    return re.findall(r"[a-z]+", text.lower())
+    # Апостроф внутри слова сохраняется, чтобы "don't" не распадалось на "don" + "t"
+    return re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
 
 def prep(text):
     return tokenize(text)
 
-NEGATIONS = {"not", "no", "never", "without", "none", "neither"}
+NEGATIONS = {"not", "no", "never", "without", "none", "neither", "nor", "nothing",
+             "nobody", "cannot", "dont", "doesnt", "didnt", "isnt", "arent", "wasnt",
+             "werent", "cant", "couldnt", "wont", "wouldnt", "shouldnt", "havent", "hasnt"}
+
+def is_negation(w):
+    return w in NEGATIONS or w.endswith("n't")
 INTENSIFIERS = {"very": 1.5, "really": 1.4, "so": 1.3, "extremely": 1.6, "super": 1.5, "highly": 1.4, "too": 1.3}
 DIMINISHERS = {"slightly": 0.7, "a_little": 0.7, "somewhat": 0.75, "barely": 0.6, "hardly": 0.6}
 
@@ -94,7 +100,7 @@ def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2
             i += 1
 
     for w in toks_norm:
-        if w in NEGATIONS:
+        if is_negation(w):
             neg_span = neg_window
             continue
         if w in INTENSIFIERS:
@@ -111,6 +117,8 @@ def aspect_sentiment_score(text, model_comments, polarity_lex, keyword=None, p=2
             contrib = pol * sign * modifier * w_att
             score += contrib
             weight_sum += abs(w_att)
+            # Усилитель/ослабитель относится только к ближайшему оценочному слову
+            modifier = 1.0
 
         if neg_span > 0:
             neg_span -= 1

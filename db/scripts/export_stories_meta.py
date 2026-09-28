@@ -29,7 +29,9 @@ def main() -> int:
                 select(
                     story_tech.c.story_id.label("story_id"),
                     func.count(func.distinct(story_tech.c.tech_id)).label("techs_count"),
-                    func.group_concat(func.distinct(Tech.name)).label("tech_names_csv"),
+                    # Пара (story_id, tech_id) — первичный ключ, дубликатов нет, DISTINCT не нужен.
+                    # aggregate_strings работает и в SQLite/MySQL (group_concat), и в Postgres (string_agg).
+                    func.aggregate_strings(Tech.name, ",").label("tech_names_csv"),
                 )
                 .select_from(story_tech.join(Tech, Tech.id == story_tech.c.tech_id))
                 .group_by(story_tech.c.story_id)

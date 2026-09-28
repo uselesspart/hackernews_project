@@ -1,5 +1,5 @@
 import argparse
-from sqlalchemy import inspect
+from sqlalchemy import func, inspect, select, table
 
 from ..session import get_engine
 
@@ -21,9 +21,9 @@ def main() -> int:
         print(f"Диалект: {engine.dialect.name}")
         print(f"Таблицы: {', '.join(tables) if tables else '(нет)'}")
         with engine.connect() as conn:
-            for t in ("stories", "comments"):
+            for t in ("story", "comment", "tech", "story_tech"):
                 if t in tables:
-                    count = conn.execute(f"SELECT COUNT(*) FROM {t}").scalar_one()
+                    count = conn.execute(select(func.count()).select_from(table(t))).scalar_one()
                     print(f"- {t}: {count} записей")
         return 0
     except Exception as e:

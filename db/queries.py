@@ -1,8 +1,15 @@
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from .models import Story, Tech, Comment
 from typing import Tuple, Iterator
 from utils.clean_text import clean_text
+
+def is_alive(model):
+    """Условие: запись не помечена в HN как dead/deleted (NULL — для старых данных)."""
+    return and_(
+        or_(model.dead.is_(None), model.dead.is_(False)),
+        or_(model.deleted.is_(None), model.deleted.is_(False)),
+    )
 
 def iter_story_titles(session: Session,
                       keep_deleted: bool = False,
@@ -11,10 +18,7 @@ def iter_story_titles(session: Session,
     q = q.filter(Story.title.isnot(None)).filter(Story.title != "")
 
     if not keep_deleted:
-        if hasattr(Story, "deleted"):
-            q = q.filter(or_(Story.deleted.is_(None), Story.deleted.is_(False)))
-        if hasattr(Story, "dead"):
-            q = q.filter(or_(Story.dead.is_(None), Story.dead.is_(False)))
+        q = q.filter(is_alive(Story))
 
     if limit:
         q = q.limit(limit)
