@@ -5,7 +5,7 @@ from sqlalchemy import and_, select
 
 from db import session_scope
 from db.models import Comment, Story
-from db.queries import is_alive
+from db.queries import has_techs, is_alive
 from utils.clean_text import clean_text
 from utils.cli import cli_main
 from utils.io import EXPORT_FORMATS, write_records
@@ -21,9 +21,12 @@ def parse_args():
     p.add_argument("--format", choices=EXPORT_FORMATS, default="txt", help="Формат выхода (по умолчанию txt)")
     p.add_argument("--limit", type=int, default=None, help="Ограничение числа записей")
     p.add_argument("--keep-deleted", action="store_true", help="Не фильтровать deleted/dead")
+    p.add_argument("--with-techs-only", action="store_true",
+                   help="Только истории, связанные хотя бы с одной технологией (после classify_tech)")
     return p.parse_args()
 
-def build_stmt(keep_deleted: bool, limit: int | None):
+
+def build_stmt(keep_deleted: bool, limit: int | None, with_techs_only: bool = False):
     """
     Строки (story_id, title, comment_text), упорядоченные по истории и комментарию.
     Склейка в Python, а не через string_agg/group_concat: порядок внутри агрегата
@@ -33,6 +36,8 @@ def build_stmt(keep_deleted: bool, limit: int | None):
     stories = select(Story.id, Story.title).where(Story.title.isnot(None), Story.title != "")
     if not keep_deleted:
         stories = stories.where(is_alive(Story))
+    if with_techs_only:
+        stories = stories.where(has_techs())
     if limit:
         stories = stories.order_by(Story.id).limit(limit)
     stories = stories.subquery()
@@ -59,7 +64,7 @@ def iter_contexts(rows):
 def main() -> int:
     args = parse_args()
     with session_scope(args.db) as session:
-        rows = session.execute(build_stmt(args.keep_deleted, args.limit)).tuples()
+        rows = session.execute(build_stmt(args.keep_deleted, args.limit, args.with_techs_only)).tuples()
         records = ((story_id, title, " ".join(comments)) for story_id, title, comments in iter_contexts(rows))
         write_records(args.out, args.format, ["id", "title", "context"], records,
                       txt=lambda r: " ".join(p for p in (r[1], r[2]) if p))

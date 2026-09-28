@@ -16,6 +16,8 @@ def parse_args():
     p.add_argument("--format", choices=EXPORT_FORMATS, default="txt", help="Формат выхода (по умолчанию txt)")
     p.add_argument("--limit", type=int, default=None, help="Ограничение числа записей")
     p.add_argument("--keep-deleted", action="store_true", help="Не фильтровать deleted/dead")
+    p.add_argument("--with-techs-only", action="store_true",
+                   help="Только истории, связанные хотя бы с одной технологией (после classify_tech)")
     return p.parse_args()
 
 
@@ -23,7 +25,8 @@ def parse_args():
 def main() -> int:
     args = parse_args()
     with session_scope(args.db) as session:
-        rows = iter_story_titles(session, keep_deleted=args.keep_deleted, limit=args.limit)
+        rows = iter_story_titles(session, keep_deleted=args.keep_deleted, limit=args.limit,
+                                 with_techs_only=args.with_techs_only)
         write_records(args.out, args.format, ["id", "title"], rows, txt=lambda r: r[1])
     print(f"Готово: экспорт заголовков в {args.out}")
     return 0

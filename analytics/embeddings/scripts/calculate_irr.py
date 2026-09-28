@@ -228,20 +228,20 @@ def parse_args():
     return p.parse_args()
 
 
-@cli_main
-def main() -> int:
-    args = parse_args()
-    df = load_titles(args.input, args.max_rows, args.sample)
-    w2v = Word2Vec.load(args.model)
-
+def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups: bool = False) -> pd.DataFrame:
+    """
+    Таблица IRR по DataFrame с колонками title и descendants (индекс — позиционный).
+    Базовая категория — статьи без технологий из топа, поэтому на вход нужны все статьи,
+    а не только статьи с технологиями.
+    """
     print("Извлечение технологий из заголовков...")
     tech_lists = df['title'].apply(extract_tech_regex)
-    if args.groups:
+    if groups:
         tech_lists, vec_map = to_groups(tech_lists, w2v)
 
     freq, top_tech, top_pairs = top_labels(tech_lists)
-    print(f"В модели: {len(top_tech)} {'групп' if args.groups else 'технологий'}, {len(top_pairs)} пар")
-    if not args.groups:
+    print(f"В модели: {len(top_tech)} {'групп' if groups else 'технологий'}, {len(top_pairs)} пар")
+    if not groups:
         vec_map = token_vec_map(w2v, freq.index)
 
     X = build_features(tech_lists, top_tech, top_pairs, vec_map)
@@ -256,11 +256,17 @@ def main() -> int:
 
     print(f"Строк: {len(X)}, признаков: {X.shape[1]}; "
           f"комментарии: среднее={y.mean():.2f}, дисперсия={y.var():.2f}")
-    result, alpha = fit_count_model(X, y, args.family)
+    result, alpha = fit_count_model(X, y, family)
     if alpha is not None:
         print(f"Оценка сверхдисперсии NB: alpha={alpha:.4f}")
+    return irr_table(result)
 
-    coef_df = irr_table(result)
+
+@cli_main
+def main() -> int:
+    args = parse_args()
+    df = load_titles(args.input, args.max_rows, args.sample)
+    coef_df = compute_irr(df, Word2Vec.load(args.model), args.family, args.groups)
     coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
     print(f"Готово: коэффициенты сохранены в {args.output}")
     print("\nТоп-10 признаков по IRR:")

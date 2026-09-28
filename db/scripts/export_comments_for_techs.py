@@ -12,7 +12,8 @@ from db.queries import is_alive
 from utils.cli import cli_main
 
 
-def all_thread_comments_for_tech(session: Session, tech_id: int, since=None):
+def thread_comments_for_tech(session: Session, tech_id: int, since=None) -> list[tuple[int, str]]:
+    """(id, текст) всех комментариев веток к статьям о технологии, по возрастанию id."""
     base_sel = (
         select(
             Comment.id.label("id"),
@@ -47,16 +48,20 @@ def all_thread_comments_for_tech(session: Session, tech_id: int, since=None):
 
     # Ответы на dead/deleted комментарии остаются в выборке — отбрасываются только сами помеченные
     stmt = (
-        select(thread_cte.c.text)
+        select(thread_cte.c.id, thread_cte.c.text)
         .where(
             thread_cte.c.text.isnot(None),
             thread_cte.c.text != "[dead]",
             or_(thread_cte.c.dead.is_(None), thread_cte.c.dead.is_(False)),
             or_(thread_cte.c.deleted.is_(None), thread_cte.c.deleted.is_(False)),
         )
+        .order_by(thread_cte.c.id)
     )
+    return [(cid, text) for cid, text in session.execute(stmt).all()]
 
-    return [t for (t,) in session.execute(stmt).all()]
+
+def all_thread_comments_for_tech(session: Session, tech_id: int, since=None) -> list[str]:
+    return [text for _, text in thread_comments_for_tech(session, tech_id, since)]
 
 def parse_args():
     p = argparse.ArgumentParser(
