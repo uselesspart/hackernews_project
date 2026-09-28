@@ -136,17 +136,34 @@ def title_stats_vecmap(xs: list[str], vec_map: dict[str, np.ndarray]):
     return (float(np.min(sims)), float(np.mean(sims)), float(np.max(sims)))
 
 
+def linearly_dependent_columns(X: pd.DataFrame) -> list[str]:
+    """
+    Жадно отбирает столбцы слева направо и возвращает те, что линейно выражаются
+    через уже отобранные (как NA-коэффициенты в R). Работает по X'X (p x p), так что дёшево.
+    """
+    xtx = X.T.to_numpy() @ X.to_numpy()
+    kept: list[int] = []
+    dependent: list[str] = []
+    for j, name in enumerate(X.columns):
+        idx = kept + [j]
+        if np.linalg.matrix_rank(xtx[np.ix_(idx, idx)]) == len(idx):
+            kept.append(j)
+        else:
+            dependent.append(name)
+    return dependent
+
+
 def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
     """
     GLM для числа комментариев. По умолчанию — отрицательная биномиальная (NB2):
     число комментариев сильно сверхдисперсно, и у Пуассона ошибки занижены.
     """
     X = sm.add_constant(X, has_constant="add")
-    xtx = X.T.to_numpy() @ X.to_numpy()
-    rank = np.linalg.matrix_rank(xtx)
-    if rank < X.shape[1]:
-        print(f"Warning: матрица признаков вырождена (ранг {rank} из {X.shape[1]}): "
-              "часть коэффициентов и их ошибки неидентифицируемы")
+    dependent = linearly_dependent_columns(X)
+    if dependent:
+        print(f"Warning: матрица признаков вырождена, исключены линейно зависимые признаки: "
+              f"{', '.join(dependent)}")
+        X = X.drop(columns=dependent)
     poisson = sm.GLM(y, X, family=sm.families.Poisson())
     if family == "poisson":
         # Робастные (sandwich) ошибки не требуют предположения var = mean

@@ -24,6 +24,3 @@ class HNRetriever:
         url = f"{self.url_base}beststories.json?print=pretty"
         response = requests.get(url)
         return response.json()
-    
-retriever = HNRetriever()
-max_item = retriever.get_maxitem_id()

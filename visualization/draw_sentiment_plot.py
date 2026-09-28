@@ -12,7 +12,7 @@ def plot_summary_csv(csv_path, output, sort_by="sentiment_index", ascending=True
 
     df["file"] = df["file"].fillna("").astype(str)
     df["mode"] = df["mode"].fillna("").astype(str)
-    df["keyword"] = df.get("keyword", "").fillna("").astype(str)
+    df["keyword"] = df["keyword"].fillna("").astype(str) if "keyword" in df else ""
 
     df["file_base"] = df["file"].map(os.path.basename)
     df["file_short"] = df["file_base"].str.split("_").str[0]

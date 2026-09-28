@@ -22,7 +22,7 @@ TECH_SUBSTITUTIONS = [
     (re.compile(r"(?<!\w)f#(?![\w#])", re.IGNORECASE), " fsharp "),
     (re.compile(r"\b(?:asp|ado)\.net\b", re.IGNORECASE), " dotnet "),
     (re.compile(r"(?<![\w.])\.net\b", re.IGNORECASE), " dotnet "),
-    (re.compile(r"\b(node|vue|next|react)\.js\b", re.IGNORECASE), r" \1js "),
+    (re.compile(r"\b(node|vue|next|react)\.js\b", re.IGNORECASE), lambda m: f" {m.group(1).lower()}js "),
     (re.compile(r"\bstable\s+diffusion\b", re.IGNORECASE), " stable_diffusion "),
     (re.compile(r"\bsql\s+server\b", re.IGNORECASE), " sqlserver "),
 ]

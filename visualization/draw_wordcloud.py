@@ -83,10 +83,9 @@ def parse_args():
 def tokenize(text: str):
     return [w for w in text.split() if len(w) > 2]
 
-def build_frequencies(comments: list[str], extra_stop: set[str] = None):
-    stop = EN_STOP
-    if extra_stop:
-        stop |= extra_stop
+def build_frequencies(comments: list[str], extra_stop: set[str] | None = None):
+    # Новое множество, а не |= : иначе стоп-слова копились бы в глобальном EN_STOP
+    stop = EN_STOP | (extra_stop or set())
     counter = Counter()
     for c in comments:
         tokens = [w for w in tokenize(clean_text(c)) if w not in stop]
@@ -97,10 +96,10 @@ def main() -> int:
     args = parse_args()
     try:
         words = []
-        with open(args.input, 'r') as f:
+        with open(args.input, 'r', encoding='utf-8') as f:
             for line in f:
                 words.append(line.strip())
-        extra_stop = {args.extra}
+        extra_stop = {args.extra.lower()} if args.extra else set()
         freqs = build_frequencies(words, extra_stop=extra_stop)
         wordcloud = WordCloud(
             width=800,

@@ -5,3 +5,5 @@ __pycache__/
 artifacts/
 bases/
 dataset.jsonl.gz
+.pytest_cache/
+.coverage
