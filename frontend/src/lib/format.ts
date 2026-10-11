@@ -37,6 +37,9 @@ export const countLabel = (n: number, forms: readonly [string, string, string]) 
 
 export const STORIES = ["статья", "статьи", "статей"] as const;
 export const COMMENTS = ["комментарий", "комментария", "комментариев"] as const;
+export const REMARKS = ["реплика", "реплики", "реплик"] as const;
+/** Предложный падеж: «в 1 комментарии», «в 13 комментариях». */
+export const COMMENTS_IN = ["комментарии", "комментариях", "комментариях"] as const;
 export const DAYS = ["день", "дня", "дней"] as const;
 
 export function parseApiDate(value: string): Date {

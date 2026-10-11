@@ -159,6 +159,11 @@ export interface components {
             score: number;
             /** Text */
             text: string;
+            /**
+             * Mentions
+             * @description Реплика упоминает технологию, score — тон этих предложений; false — таких примеров нет, взят тон комментария целиком
+             */
+            mentions: boolean;
             /** Hn Url */
             hn_url: string;
         };
@@ -226,7 +231,10 @@ export interface components {
             /** Similarity */
             similarity: number;
         };
-        /** Sentiment */
+        /**
+         * Sentiment
+         * @description Тон комментариев целиком (index, n, доли) и тон предложений о самой технологии (aspect).
+         */
         Sentiment: {
             /** Index */
             index: number | null;
@@ -243,6 +251,8 @@ export interface components {
             neu_share: number | null;
             /** Neg Share */
             neg_share: number | null;
+            /** @description Только предложения, где упомянута технология; n — сколько комментариев её упоминают */
+            aspect: components["schemas"]["SentimentShares"];
             /** Positive */
             positive: components["schemas"]["CommentExample"][];
             /** Negative */
@@ -259,6 +269,24 @@ export interface components {
             n: number;
             /** Reliable */
             reliable: boolean;
+        };
+        /** SentimentShares */
+        SentimentShares: {
+            /** Index */
+            index: number | null;
+            /**
+             * N
+             * @description Сколько комментариев оценено
+             */
+            n: number;
+            /** Reliable */
+            reliable: boolean;
+            /** Pos Share */
+            pos_share: number | null;
+            /** Neu Share */
+            neu_share: number | null;
+            /** Neg Share */
+            neg_share: number | null;
         };
         /** StoriesPage */
         StoriesPage: {

@@ -10,6 +10,7 @@ import pandas as pd
 from gensim.models import Word2Vec
 
 from analytics.embeddings.patterns import PATTERNS
+from analytics.embeddings.w2v_quality import format_report, quality_report
 from utils.cli import cli_main
 
 
@@ -142,6 +143,8 @@ def main() -> int:
     print(f"Сохранено (векторы, TXT): {txt_path}")
     print(f"Сохранено (векторы, CSV): {csv_path}")
     print(f"Размер словаря: {len(model.wv)}")
+    # Сразу видно, различает ли модель технологии: на малом корпусе все соседи почти одинаковы
+    print(format_report(quality_report(model.wv, list(PATTERNS))))
 
     # Агрегация синонимов (опционально)
     if args.aggregate_synonyms:

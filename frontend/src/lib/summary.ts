@@ -1,4 +1,4 @@
-import type { DatasetMeta, IrrBrief, TechProfile } from "../api/types";
+import type { DatasetMeta, IrrBrief, Sentiment, TechProfile } from "../api/types";
 import { countLabel, formatInt, formatShare, STORIES, timesLabel } from "./format";
 
 /**
@@ -17,23 +17,36 @@ export function buildLead(profile: TechProfile, meta: DatasetMeta | undefined): 
       : `${countLabel(stats.stories, STORIES)}${of} в выборке.`,
   );
 
-  if (sentiment.reliable && sentiment.pos_share != null && sentiment.neg_share != null) {
-    const pos = formatShare(sentiment.pos_share);
-    const neg = formatShare(sentiment.neg_share);
-    if (sentiment.pos_share > sentiment.neg_share) {
-      lead.push(`Позитивных комментариев больше, чем негативных: ${pos} против ${neg}.`);
-    } else if (sentiment.pos_share < sentiment.neg_share) {
-      lead.push(`Негативных комментариев больше, чем позитивных: ${neg} против ${pos}.`);
-    } else {
-      lead.push(`Позитивных и негативных комментариев поровну: по ${pos}.`);
-    }
-  } else if (sentiment.n > 0) {
-    lead.push(`Для оценки тона пока мало комментариев: ${formatInt(sentiment.n)}.`);
-  }
+  const tone = toneSentence(sentiment, name);
+  if (tone) lead.push(tone);
 
   const engagement = irrSentence(irr, name);
   if (engagement) lead.push(engagement);
   return lead;
+}
+
+/**
+ * Тон о самой технологии отвечает на вопрос страницы точнее, чем тон всего обсуждения,
+ * поэтому он в приоритете; в формулировке всегда сказано, о чём именно доли.
+ */
+export function toneSentence(sentiment: Sentiment, name: string): string | null {
+  const { aspect } = sentiment;
+  if (aspect.reliable && aspect.pos_share != null && aspect.neg_share != null) {
+    return compareShares(aspect.pos_share, aspect.neg_share, `Когда говорят о ${name},`, "реплик");
+  }
+  if (sentiment.reliable && sentiment.pos_share != null && sentiment.neg_share != null) {
+    return compareShares(sentiment.pos_share, sentiment.neg_share, `В обсуждениях статей о ${name}`, "комментариев");
+  }
+  if (sentiment.n > 0) return `Для оценки тона пока мало комментариев: ${formatInt(sentiment.n)}.`;
+  return null;
+}
+
+function compareShares(pos: number, neg: number, scope: string, unit: string): string {
+  const p = formatShare(pos);
+  const n = formatShare(neg);
+  if (pos > neg) return `${scope} позитивных ${unit} больше, чем негативных: ${p} против ${n}.`;
+  if (pos < neg) return `${scope} негативных ${unit} больше, чем позитивных: ${n} против ${p}.`;
+  return `${scope} позитивных и негативных ${unit} поровну: по ${p}.`;
 }
 
 export function irrSentence(irr: IrrBrief, name: string): string | null {

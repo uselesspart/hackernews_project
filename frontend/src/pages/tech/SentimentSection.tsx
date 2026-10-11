@@ -1,20 +1,21 @@
 import { useState } from "react";
 
-import type { CommentExample, TechProfile } from "../../api/types";
+import type { CommentExample, SentimentShares, TechProfile } from "../../api/types";
 import { SentimentBar } from "../../components/charts";
 import { ExternalIcon } from "../../components/icons";
 import { Note, Section } from "../../components/ui";
-import { COMMENTS, countLabel, formatSigned } from "../../lib/format";
+import { COMMENTS, COMMENTS_IN, countLabel, formatSigned, REMARKS } from "../../lib/format";
 import styles from "./tech.module.css";
 
 /**
  * Сигнатурный момент страницы: цифры тона превращаются в реальные голоса.
- * Индекс и доли показываются только при достаточном числе комментариев,
- * а сами примеры — всегда: это не оценка, а цитаты со ссылкой на источник.
+ * Сначала тон реплик о самой технологии (ответ на вопрос «как говорят о Rust»),
+ * под ним — тон всего обсуждения как фон. Доли — только при достаточной выборке,
+ * цитаты — всегда: это не оценка, а первоисточник со ссылкой.
  */
 export function SentimentSection({ profile }: { profile: TechProfile }) {
   const { sentiment: s, name } = profile;
-  const hasShares = s.reliable && s.pos_share != null && s.neu_share != null && s.neg_share != null;
+  const withIndex = [s.aspect, s].some((t) => isShown(t) && t.index != null);
 
   return (
     <Section
@@ -23,48 +24,98 @@ export function SentimentSection({ profile }: { profile: TechProfile }) {
       lead={
         s.n > 0 ? (
           <>
-            Оценено {countLabel(s.n, COMMENTS)} в обсуждениях статей о {name}. Тон определяется по всему
-            комментарию, а не только по словам о самой технологии.
+            Оценено {countLabel(s.n, COMMENTS)} в обсуждениях статей о {name}
+            {s.aspect.n > 0 ? `, из них ${name} прямо называют в ${countLabel(s.aspect.n, COMMENTS_IN)}` : ""}. Цитаты
+            чужих реплик и код в оценку не входят.
           </>
         ) : undefined
       }
     >
       {s.n === 0 ? (
         <Note>К статьям о {name} в выборке нет комментариев, поэтому тон оценить нельзя.</Note>
-      ) : hasShares ? (
-        <div className={styles.sentimentSummary}>
-          <SentimentBar pos={s.pos_share ?? 0} neu={s.neu_share ?? 0} neg={s.neg_share ?? 0} />
-          {s.index != null && (
-            <p className={styles.index}>
-              Индекс тона <strong className={styles.indexValue}>{formatSigned(s.index)}</strong>
-              <span className={styles.indexScale}> — среднее по комментариям, шкала от −1 (негативно) до +1 (позитивно)</span>
+      ) : (
+        <div className={styles.toneRows}>
+          <ToneRow
+            title={`Когда говорят о ${name}`}
+            caption="только предложения, где технология названа"
+            tone={s.aspect}
+            lowData={
+              s.aspect.n === 0
+                ? `${name} в этих комментариях прямо не называют — тон по отношению к технологии оценить не по чему.`
+                : `Мало данных: ${countLabel(s.aspect.n, REMARKS)} о ${name}. Доли покажем, когда таких реплик станет больше.`
+            }
+          />
+          <ToneRow
+            title="Всё обсуждение"
+            caption="комментарии целиком, о чём бы они ни были"
+            tone={s}
+            lowData={`Мало данных для оценки тона: ${countLabel(s.n, COMMENTS)}. Доли покажем, когда комментариев станет больше — на такой выборке они меняются от пары случайных реплик.`}
+          />
+          {withIndex && (
+            <p className={styles.indexScale}>
+              Индекс тона — среднее по репликам, шкала от −1 (негативно) до +1 (позитивно).
             </p>
           )}
         </div>
-      ) : (
-        <Note tone="lowdata">
-          Мало данных для оценки тона: {countLabel(s.n, COMMENTS)}. Доли и индекс покажем, когда комментариев станет
-          больше — на такой выборке они меняются от пары случайных реплик.
-        </Note>
       )}
 
       {(s.positive.length > 0 || s.negative.length > 0) && (
         <div id="voices" className={styles.voices}>
-          <Voices title="Самые позитивные" tone="pos" items={s.positive} />
-          <Voices title="Самые негативные" tone="neg" items={s.negative} />
+          <Voices tone="pos" items={s.positive} name={name} />
+          <Voices tone="neg" items={s.negative} name={name} />
         </div>
       )}
     </Section>
   );
 }
 
-function Voices({ title, tone, items }: { title: string; tone: "pos" | "neg"; items: CommentExample[] }) {
+function isShown(tone: SentimentShares): boolean {
+  return tone.reliable && tone.pos_share != null && tone.neu_share != null && tone.neg_share != null;
+}
+
+function ToneRow({
+  title,
+  caption,
+  tone,
+  lowData,
+}: {
+  title: string;
+  caption: string;
+  tone: SentimentShares;
+  lowData: string;
+}) {
+  return (
+    <div className={styles.toneRow}>
+      <h3 className={styles.toneTitle}>
+        {title}
+        <span className={styles.toneCaption}> — {caption}</span>
+      </h3>
+      {isShown(tone) ? (
+        <>
+          <SentimentBar pos={tone.pos_share ?? 0} neu={tone.neu_share ?? 0} neg={tone.neg_share ?? 0} />
+          {tone.index != null && (
+            <p className={styles.index}>
+              Индекс тона <strong className={styles.indexValue}>{formatSigned(tone.index)}</strong>
+            </p>
+          )}
+        </>
+      ) : (
+        <Note tone="lowdata">{lowData}</Note>
+      )}
+    </div>
+  );
+}
+
+function Voices({ tone, items, name }: { tone: "pos" | "neg"; items: CommentExample[]; name: string }) {
   if (items.length === 0) return null;
+  // Бэкенд берёт примеры из реплик о технологии, а если таких нет — из комментариев целиком;
+  // подпись говорит, какой из двух случаев перед читателем
+  const about = items.every((c) => c.mentions) ? `о ${name}` : "в обсуждениях";
   return (
     <div className={styles.voiceCol}>
       <h3 className={styles.voiceTitle}>
         <span className={`${styles.voiceKey} ${tone === "pos" ? styles.keyPos : styles.keyNeg}`} aria-hidden="true" />
-        {title}
+        {tone === "pos" ? "Самые позитивные" : "Самые негативные"} {about}
       </h3>
       <ul className={styles.quotes}>
         {items.map((c) => (

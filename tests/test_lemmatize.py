@@ -126,3 +126,16 @@ def test_iter_tokenized_lines(tmp_path):
     assert list(iter_tokenized_lines(path, lemmatize_en=False, preserve_empty=True)) == [
         ["first", "line"], [], ["second", "<NUM>"]
     ]
+
+
+def test_tokenize_and_lemmatize_many_without_lemmas():
+    assert lemmatize.tokenize_and_lemmatize_many(["Rust 2024 rocks", "", "C++ wins"], lemmatize_en=False) == [
+        ["rust", "<NUM>", "rocks"], [], ["cpp", "wins"]]
+
+
+@pytest.mark.spacy
+def test_tokenize_and_lemmatize_many_matches_single_calls():
+    texts = ["Cats were running fast", "I don't like C++ or C#", "", "Running cats!"]
+    expected = [tokenize_and_lemmatize(t) for t in texts]
+    lemmatize._LEMMA_CACHE.clear()
+    assert lemmatize.tokenize_and_lemmatize_many(texts) == expected
