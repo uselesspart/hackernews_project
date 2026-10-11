@@ -1,0 +1,283 @@
+/* Полосы рейтинга: тонкие (≤ 24 px), скругление 4 px только у конца данных */
+.barList {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) 1fr minmax(3.5rem, auto);
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 36px;
+}
+
+.barLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barLabel a {
+  color: var(--text);
+  text-decoration-color: var(--border-strong);
+}
+
+.barLabel a:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+.barTrack {
+  display: block;
+  height: 10px;
+}
+
+.bar {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--data-bar);
+}
+
+.barValue {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+@media (max-width: 560px) {
+  .barRow {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label value"
+      "track track";
+    row-gap: var(--space-1);
+    padding: var(--space-1) 0;
+  }
+
+  .barLabel {
+    grid-area: label;
+  }
+
+  .barTrack {
+    grid-area: track;
+  }
+
+  .barValue {
+    grid-area: value;
+  }
+}
+
+/* Тональность */
+.sentiment {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.sentimentBar {
+  display: flex;
+  gap: 2px; /* зазор цветом поверхности вместо обводки */
+  height: 16px;
+}
+
+.segment {
+  display: block;
+  min-width: 3px;
+}
+
+.segment:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.segment:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.segment:only-child {
+  border-radius: 4px;
+}
+
+.neg {
+  background: var(--sent-neg);
+}
+
+.neu {
+  background: var(--sent-neu);
+}
+
+.pos {
+  background: var(--sent-pos);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legendValue {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Столбцы динамики */
+.columns {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.plot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 180px auto;
+  column-gap: var(--space-2);
+}
+
+.yAxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin: -0.5em 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.area {
+  position: relative;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--grid);
+}
+
+.cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.colSlot {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+}
+
+.col {
+  display: block;
+  width: min(100%, 24px);
+  border-radius: 4px 4px 0 0;
+  background: var(--data-bar);
+  transition: opacity var(--dur-instant) var(--ease-standard);
+}
+
+.cols:hover .col:not(.colActive) {
+  opacity: 0.55;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(6px);
+  display: grid;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tooltipLeft {
+  transform: translateX(calc(-100% - 6px));
+}
+
+.tooltip strong {
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+
+.xAxis {
+  grid-column: 2;
+  display: flex;
+  gap: 2px;
+  padding-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.xAxis span {
+  flex: 1;
+  overflow: visible;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.xAxis span:first-child {
+  text-align: left;
+}
+
+.xAxis span:last-child {
+  text-align: right;
+}
+
+.table summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.table table {
+  margin-top: var(--space-2);
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-4) var(--space-1) 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-weight: normal;
+}
+
+.table thead th {
+  color: var(--text-muted);
+}

@@ -1,0 +1,378 @@
+/* Шапка технологии */
+.hero {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  min-height: 32px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--text);
+}
+
+.backIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.name {
+  font-size: var(--fs-hero);
+  letter-spacing: -0.03em;
+}
+
+.aliases {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.aliasesLabel {
+  color: var(--text-muted);
+}
+
+.lead {
+  max-width: var(--text-max);
+  font-size: var(--fs-lg);
+  line-height: 1.5;
+}
+
+/* Тональность */
+.sentimentSummary {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 720px;
+}
+
+.index {
+  color: var(--text-secondary);
+}
+
+.indexValue {
+  color: var(--text);
+  font-size: var(--fs-lg);
+}
+
+.indexScale {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.voices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: var(--space-5) var(--space-6);
+  margin-top: var(--space-3);
+}
+
+.voiceCol {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.voiceTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-base);
+}
+
+.voiceKey {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.keyPos {
+  background: var(--sent-pos);
+}
+
+.keyNeg {
+  background: var(--sent-neg);
+}
+
+.quotes {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quote {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.quote blockquote {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.quoteFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.linkButton {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  color: var(--text);
+}
+
+.external {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.externalIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Статьи */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+}
+
+.segment {
+  position: relative;
+}
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segment span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-instant) var(--ease-standard);
+}
+
+.segment span:hover {
+  color: var(--text);
+}
+
+.segment input:checked + span {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.segment input:focus-visible + span {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.stories {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: opacity var(--dur-short) var(--ease-standard);
+}
+
+.stories > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.busy {
+  opacity: 0.55;
+}
+
+.story {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+}
+
+.storyTitle {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.storyTitle a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.storyTitle a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.domain {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: normal;
+}
+
+.storyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.storySkeleton {
+  display: grid;
+  gap: var(--space-3);
+  min-height: 200px;
+}
+
+.inlineError {
+  color: var(--danger-text);
+  font-size: var(--fs-sm);
+}
+
+/* Вовлечённость */
+.irr {
+  display: grid;
+  gap: var(--space-2);
+  max-width: var(--text-max);
+}
+
+.irrFigure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.irrValue {
+  font-size: var(--fs-figure);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.irrInterval {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.irrText {
+  color: var(--text-secondary);
+}
+
+/* Рядом */
+.related {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: var(--space-6) var(--space-7);
+}
+
+.subTitle {
+  margin-bottom: var(--space-3);
+  font-size: var(--fs-base);
+}
+
+.subLead {
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.neighbors,
+.inlineLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.neighbors a,
+.inlineLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color var(--dur-instant) var(--ease-standard);
+}
+
+.neighbors a:hover,
+.inlineLinks a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Методика */
+.method {
+  max-width: var(--text-max);
+  margin-top: var(--space-7);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.method summary {
+  width: fit-content;
+  min-height: 32px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.methodBody {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

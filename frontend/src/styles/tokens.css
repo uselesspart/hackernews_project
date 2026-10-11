@@ -1,0 +1,129 @@
+/*
+ * Токены дизайна. Цвета данных проверены scripts/validate_palette.js скилла dataviz
+ * (полюса тональности и столбцы — ΔE и контраст ≥ 3:1 на поверхностях обеих тем).
+ * Движение — набор из experience-architect/references/motion-system.md, §3.
+ */
+:root {
+  color-scheme: light;
+
+  /* Поверхности и текст */
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --surface-sunken: #f2f1ed;
+  --border: #e1e0d9;
+  --border-strong: #c3c2b7;
+  --text: #171614;
+  --text-secondary: #52514e;
+  --text-muted: #6b6a65; /* 5.3:1 на --bg */
+
+  /* Акцент интерфейса (ссылки, фокус): отсылка к оранжевому HN, затемнён до 5:1 для текста */
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-soft: #fdf0e6;
+  --on-accent: #ffffff;
+  --focus-ring: #c2410c;
+
+  /* Данные */
+  --data-bar: #2a78d6;
+  --data-bar-muted: #c9c7c0;
+  --sent-pos: #2a78d6;
+  --sent-neu: #c9c7c0;
+  --sent-neg: #e34948;
+  --grid: #e1e0d9;
+
+  /* Состояния */
+  --note-bg: #f6f3ea;
+  --note-border: #e2d9bf;
+  --danger-text: #b42318;
+
+  /* Типографика */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.9375rem;
+  --fs-base: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.625rem;
+  --fs-hero: clamp(2.5rem, 7vw, 4rem);
+  --fs-figure: clamp(1.75rem, 4vw, 2.25rem);
+  --lh-body: 1.55;
+  --lh-tight: 1.15;
+
+  /* Отступы и размеры */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --page-max: 1080px;
+  --text-max: 68ch;
+  --header-h: 60px;
+
+  /* Движение */
+  --dur-instant: 100ms;
+  --dur-short: 200ms;
+  --dur-medium: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0, 1);
+  --ease-in: cubic-bezier(0.3, 0, 1, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-sunken: #222220;
+    --border: #2c2c2a;
+    --border-strong: #45443f;
+    --text: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #a3a29a;
+    --accent: #fb923c;
+    --accent-hover: #fdba74;
+    --accent-soft: #2b1d12;
+    --on-accent: #1a1a19;
+    --focus-ring: #fb923c;
+    --data-bar: #3987e5;
+    --data-bar-muted: #55544f;
+    --sent-pos: #3987e5;
+    --sent-neu: #55544f;
+    --sent-neg: #e66767;
+    --grid: #2c2c2a;
+    --note-bg: #22201a;
+    --note-border: #3d3826;
+    --danger-text: #f97066;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface: #1a1a19;
+  --surface-sunken: #222220;
+  --border: #2c2c2a;
+  --border-strong: #45443f;
+  --text: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #a3a29a;
+  --accent: #fb923c;
+  --accent-hover: #fdba74;
+  --accent-soft: #2b1d12;
+  --on-accent: #1a1a19;
+  --focus-ring: #fb923c;
+  --data-bar: #3987e5;
+  --data-bar-muted: #55544f;
+  --sent-pos: #3987e5;
+  --sent-neu: #55544f;
+  --sent-neg: #e66767;
+  --grid: #2c2c2a;
+  --note-bg: #22201a;
+  --note-border: #3d3826;
+  --danger-text: #f97066;
+}

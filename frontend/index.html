@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Как на Hacker News обсуждают языки, базы данных, ИИ-модели и другие технологии: число статей, тональность комментариев, вовлечённость и связи." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Технологии на Hacker News</title>
+    <script>
+      // До отрисовки, чтобы сохранённая тема не мигала при загрузке
+      try {
+        var t = localStorage.getItem("theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Для работы сайта нужен JavaScript. Данные доступны и через API: <a href="/docs">/docs</a>.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

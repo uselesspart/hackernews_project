@@ -1,0 +1,172 @@
+.root {
+  position: relative;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  position: absolute;
+  left: var(--space-3);
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-6) 0 calc(var(--space-3) + 28px);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  transition: border-color var(--dur-instant) var(--ease-standard);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:hover {
+  border-color: var(--text-muted);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.hero .input {
+  min-height: 56px;
+  font-size: var(--fs-lg);
+  border-radius: var(--radius-lg);
+}
+
+.hero .icon {
+  left: var(--space-4);
+  width: 22px;
+  height: 22px;
+}
+
+.hero .input {
+  padding-left: calc(var(--space-4) + 32px);
+}
+
+.kbd {
+  position: absolute;
+  right: var(--space-3);
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.input:focus ~ .kbd {
+  display: none;
+}
+
+@media (hover: none) {
+  .kbd {
+    display: none;
+  }
+}
+
+.popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.12);
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+}
+
+/* Появление — только прозрачность и коротко: поиск открывают часто (motion-system, Н13) */
+.popover:not([hidden]) {
+  animation: popIn var(--dur-instant) var(--ease-out);
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.heading {
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.option[aria-selected="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.meta {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.option mark {
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.2em;
+}
+
+.empty {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
