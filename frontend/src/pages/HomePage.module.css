@@ -1,0 +1,36 @@
+.hero {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 760px;
+  padding-top: var(--space-6);
+}
+
+.title {
+  font-size: var(--fs-hero);
+  letter-spacing: -0.025em;
+}
+
+.lead {
+  max-width: 60ch;
+  font-size: var(--fs-lg);
+  color: var(--text-secondary);
+}
+
+.search {
+  margin-top: var(--space-3);
+}
+
+.datasetWrap {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dataset {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.skeletons {
+  display: grid;
+  gap: var(--space-2);
+}

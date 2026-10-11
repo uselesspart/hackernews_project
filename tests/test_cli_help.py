@@ -22,6 +22,7 @@ CLI_MODULES = [
     "analytics.embeddings.scripts.train_model",
     "analytics.embeddings.scripts.calculate_irr",
     "analytics.embeddings.scripts.calculate_sentiment",
+    "analytics.embeddings.scripts.precompute",
     "visualization.draw_relationship_map",
     "visualization.draw_wordcloud",
     "visualization.draw_irr_plot",

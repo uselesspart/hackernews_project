@@ -68,26 +68,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 9. Удаляем из БД истории без упоминания технологий...
-%PY_CMD% -m db.scripts.trim -d "%DB_URL%"
-if errorlevel 1 (
-  echo Ошибка при очистке БД
-  exit /b 1
-)
-
-echo 10. Экспорт контекста и заголовков(db.scripts.export_context и db.scripts.export_titles)...
-%PY_CMD% -m db.scripts.export_context -d "%DB_URL%" -o "%CTX_OUT%" --format txt
+:: Истории без технологий остаются в БД: они нужны как база сравнения для IRR.
+:: Для обучения моделей выгружаются только истории с технологиями.
+echo 9. Экспорт контекста и заголовков (db.scripts.export_context и db.scripts.export_titles)...
+%PY_CMD% -m db.scripts.export_context -d "%DB_URL%" -o "%CTX_OUT%" --format txt --with-techs-only
 if errorlevel 1 (
   echo Ошибка при экспорте контекста
   exit /b 1
 )
-%PY_CMD% -m db.scripts.export_titles -d "%DB_URL%" -o "%TITLES_OUT%" --format txt
+%PY_CMD% -m db.scripts.export_titles -d "%DB_URL%" -o "%TITLES_OUT%" --format txt --with-techs-only
 if errorlevel 1 (
   echo Ошибка при экспорте заголовков
   exit /b 1
 )
 
-echo 11. Лемматизация (analytics.embeddings.scripts.lemmatize_file)...
+echo 10. Лемматизация (analytics.embeddings.scripts.lemmatize_file)...
 %PY_CMD% -m analytics.embeddings.scripts.lemmatize_file -i "%CTX_OUT%" -o "%CTX_LEM%"
 if errorlevel 1 (
   echo Ошибка лемматизации контекста
@@ -99,7 +94,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 12. Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)...
+echo 11. Преобразование в токены (analytics.embeddings.scripts.sentences_to_vectors)...
 %PY_CMD% -m analytics.embeddings.scripts.sentences_to_vectors -i "%CTX_LEM%" -o "%CONTEXT_TOKENS%"
 if errorlevel 1 (
   echo Ошибка при векторизации контекста
@@ -111,7 +106,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 13. Обучение модели (analytics.embeddings.scripts.train_model)...
+echo 12. Обучение модели (analytics.embeddings.scripts.train_model)...
 %PY_CMD% -m analytics.embeddings.scripts.train_model -p "%CONTEXT_TOKENS%" -o "%CONTEXT_MODEL_OUT%"
 if errorlevel 1 (
   echo Ошибка при обучении модели контекста
@@ -123,21 +118,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo 14. Экспорт технологий (db.scripts.export_tech_names) ...
+echo 13. Экспорт технологий (db.scripts.export_tech_names) ...
 %PY_CMD% -m db.scripts.export_tech_names -d "%DB_URL%" -o "%TECH_OUT%" --format txt
 if errorlevel 1 (
   echo Ошибка при экспорте названий технологий
   exit /b 1
 )
 
-echo 15. Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)...
+echo 14. Экспортируем комментарии технологий по отдельности (db.scripts.export_comments_for_techs)...
 %PY_CMD% -m db.scripts.export_comments_for_techs -d "%DB_URL%" -o "%COMMENTS_OUT%" -m 1
 if errorlevel 1 (
   echo Ошибка при экспорте комментариев
   exit /b 1
 )
 
-echo 16. Лемматизируем комментарии...
+echo 15. Лемматизируем комментарии...
 call scripts\lemmatize.bat "%COMMENTS_OUT%" "%COMMENTS_LEM%"
 if errorlevel 1 (
   echo Ошибка при лемматизации комментариев

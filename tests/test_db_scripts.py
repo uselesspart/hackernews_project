@@ -94,6 +94,18 @@ def test_export_titles(run_cli, ingested_db, tmp_path, fmt, expected):
     assert _read(out) == expected
 
 
+def test_export_titles_with_techs_only(run_cli, classified_db, tmp_path):
+    out = tmp_path / "titles.txt"
+    assert run_cli(export_titles.main, "-d", classified_db, "-o", out, "--with-techs-only") == 0
+    assert _read(out) == ["Why C++ is great", "Rust vs Golang"]  # "Random news" без технологий
+
+
+def test_export_context_with_techs_only(run_cli, classified_db, tmp_path):
+    out = tmp_path / "context.txt"
+    assert run_cli(export_context.main, "-d", classified_db, "-o", out, "--with-techs-only") == 0
+    assert _read(out) == ["Why C++ is great Great language", "Rust vs Golang Rust is nice"]
+
+
 def test_export_titles_keep_deleted(run_cli, ingested_db, tmp_path):
     out = tmp_path / "titles.txt"
     assert run_cli(export_titles.main, "-d", ingested_db, "-o", out, "--keep-deleted") == 0

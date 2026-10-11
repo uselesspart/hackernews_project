@@ -14,12 +14,20 @@ def is_alive(model):
     )
 
 
+def has_techs():
+    """Условие: у истории есть хотя бы одна технология (после classify_tech)."""
+    return Story.techs.any()
+
+
 def iter_story_titles(session: Session,
                       keep_deleted: bool = False,
-                      limit: int | None = None) -> Iterator[tuple[int, str]]:
+                      limit: int | None = None,
+                      with_techs_only: bool = False) -> Iterator[tuple[int, str]]:
     stmt = select(Story.id, Story.title).where(Story.title.isnot(None), Story.title != "").order_by(Story.id)
     if not keep_deleted:
         stmt = stmt.where(is_alive(Story))
+    if with_techs_only:
+        stmt = stmt.where(has_techs())
     if limit:
         stmt = stmt.limit(limit)
     yield from session.execute(stmt.execution_options(yield_per=1000)).tuples()

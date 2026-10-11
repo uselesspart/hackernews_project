@@ -1,0 +1,142 @@
+.section {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-7);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+}
+
+.sectionLead {
+  max-width: var(--text-max);
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.note {
+  display: flex;
+  gap: var(--space-3);
+  max-width: var(--text-max);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.lowdata {
+  border: 1px solid var(--note-border);
+  background: var(--note-bg);
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.stat {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.statLabel {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+/* Крупные одиночные числа — пропорциональные цифры (tabular только в колонках) */
+.statValue {
+  margin: 0;
+  font-size: var(--fs-figure);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.statHint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  max-width: var(--text-max);
+  padding: var(--space-6) 0;
+}
+
+.stateTitle {
+  font-size: var(--fs-xl);
+}
+
+.stateText {
+  display: grid;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-instant) var(--ease-standard),
+    border-color var(--dur-instant) var(--ease-standard);
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+  background: var(--surface-sunken);
+}
+
+.button:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}

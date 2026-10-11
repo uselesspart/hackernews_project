@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from analytics.embeddings import projection
 from analytics.embeddings.scripts.calculate_sentiment import write_summaries_csv
+from utils import words
 from visualization import draw_irr_plot, draw_relationship_map, draw_sentiment_plot, draw_wordcloud
 
 PNG_MAGIC = b"\x89PNG"
@@ -24,17 +26,17 @@ def _sim_matrix(names, seed=0):
 def test_detect_matrix_type():
     names = ["a", "b", "c"]
     sim = _sim_matrix(names)
-    assert draw_relationship_map.detect_matrix_type(sim) == "similarity"
-    assert draw_relationship_map.detect_matrix_type(1 - sim) == "distance"
+    assert projection.detect_matrix_type(sim) == "similarity"
+    assert projection.detect_matrix_type(1 - sim) == "distance"
     features = pd.DataFrame(np.ones((3, 5)), index=names)
-    assert draw_relationship_map.detect_matrix_type(features) == "features"
+    assert projection.detect_matrix_type(features) == "features"
 
 
 def test_pick_perplexity():
-    assert draw_relationship_map.pick_perplexity(3) == 2.0
-    assert draw_relationship_map.pick_perplexity(100) == 30.0
+    assert projection.pick_perplexity(3) == 2.0
+    assert projection.pick_perplexity(100) == 30.0
     with pytest.raises(ValueError):
-        draw_relationship_map.pick_perplexity(2)
+        projection.pick_perplexity(2)
 
 
 @pytest.mark.parametrize("with_labels_file", [False, True])
@@ -61,15 +63,15 @@ def test_relationship_map_too_few_labels(run_cli, tmp_path):
 # --- draw_wordcloud ---------------------------------------------------------
 
 def test_build_frequencies_filters_stop_words_and_short_tokens():
-    freqs = draw_wordcloud.build_frequencies(["the rust compiler is fast", "rust <b>compiler</b> go"])
+    freqs = words.build_frequencies(["the rust compiler is fast", "rust <b>compiler</b> go"])
     assert freqs == {"rust": 2, "compiler": 2, "fast": 1}
 
 
 def test_build_frequencies_does_not_mutate_global_stop_words():
-    before = set(draw_wordcloud.EN_STOP)
-    freqs = draw_wordcloud.build_frequencies(["rust compiler"], extra_stop={"rust"})
+    before = set(words.EN_STOP)
+    freqs = words.build_frequencies(["rust compiler"], extra_stop={"rust"})
     assert freqs == {"compiler": 1}
-    assert before == draw_wordcloud.EN_STOP
+    assert before == words.EN_STOP
 
 
 def test_wordcloud_main(run_cli, tmp_path):
