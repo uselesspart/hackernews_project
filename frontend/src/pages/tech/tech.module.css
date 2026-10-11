@@ -52,10 +52,26 @@
 }
 
 /* Тональность */
-.sentimentSummary {
+/* Две строки на одной шкале: тон реплик о технологии и тон всего обсуждения */
+.toneRows {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
   max-width: 720px;
+}
+
+.toneRow {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.toneTitle {
+  font-size: var(--fs-base);
+}
+
+.toneCaption {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 400;
 }
 
 .index {

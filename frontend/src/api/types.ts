@@ -8,6 +8,7 @@ export type Suggestion = S["Suggestion"];
 export type TechListItem = S["TechListItem"];
 export type TechProfile = S["TechProfile"];
 export type Sentiment = S["Sentiment"];
+export type SentimentShares = S["SentimentShares"];
 export type CommentExample = S["CommentExample"];
 export type IrrBrief = S["IrrBrief"];
 export type StoriesPage = S["StoriesPage"];

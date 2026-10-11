@@ -18,6 +18,7 @@ from api.schemas import (
     Neighbor,
     Sentiment,
     SentimentBrief,
+    SentimentShares,
     StoriesPage,
     StoryOut,
     Suggestion,
@@ -51,12 +52,22 @@ def _sentiment_brief(m: TechMetrics | None, settings: Settings) -> SentimentBrie
                           reliable=n >= settings.min_sentiment_comments and m.sentiment_index is not None)
 
 
+def _aspect(m: TechMetrics | None, settings: Settings) -> SentimentShares:
+    n = (m.aspect_n or 0) if m else 0
+    index = m.aspect_index if m else None
+    return SentimentShares(index=index, n=n, reliable=n >= settings.min_sentiment_comments and index is not None,
+                           pos_share=m.aspect_pos_share if m else None, neu_share=m.aspect_neu_share if m else None,
+                           neg_share=m.aspect_neg_share if m else None)
+
+
 def _irr_brief(m: TechMetrics | None, stories: int, settings: Settings) -> IrrBrief:
     if m is None or m.irr is None:
         return IrrBrief(value=None, low=None, high=None, pval=None, reliable=False, significant=False)
-    significant = m.irr_low is not None and m.irr_high is not None and (m.irr_low > 1 or m.irr_high < 1)
+    has_ci = m.irr_low is not None and m.irr_high is not None
+    significant = has_ci and (m.irr_low > 1 or m.irr_high < 1)
+    # Без конечного интервала оценка не измерение: precompute пишет вместо inf null
     return IrrBrief(value=m.irr, low=m.irr_low, high=m.irr_high, pval=m.irr_pval,
-                    reliable=stories >= settings.min_irr_stories, significant=significant)
+                    reliable=stories >= settings.min_irr_stories and has_ci, significant=significant)
 
 
 def _resolve(session: Session, key: str):
@@ -123,7 +134,7 @@ def tech_profile(key: str, session: SessionDep, settings: SettingsDep,
 
     examples = [
         CommentExample(comment_id=e.comment_id, label=e.label, score=e.score, text=e.text,
-                       hn_url=q.hn_url(e.comment_id))
+                       mentions=bool(e.mentions), hn_url=q.hn_url(e.comment_id))
         for e in (q.sentiment_examples(session, tech_id) if tech_id else [])
     ]
     brief = _sentiment_brief(m, settings)
@@ -136,6 +147,7 @@ def tech_profile(key: str, session: SessionDep, settings: SettingsDep,
             **brief.model_dump(),
             pos_share=m.pos_share if m else None, neu_share=m.neu_share if m else None,
             neg_share=m.neg_share if m else None,
+            aspect=_aspect(m, settings),
             positive=[e for e in examples if e.label == 1],
             negative=sorted((e for e in examples if e.label == -1), key=lambda e: e.score),
         ),

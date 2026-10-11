@@ -96,6 +96,10 @@ def test_profile(client):
     assert [e["comment_id"] for e in s["negative"]] == [13]
     assert {e["comment_id"] for e in s["positive"]} == {10, 11}
     assert s["positive"][0]["hn_url"] == f"https://news.ycombinator.com/item?id={s['positive'][0]['comment_id']}"
+    # В комментариях к статье о C++ сам C++ не упомянут: аспектного тона нет, примеры — по комментариям целиком
+    assert s["aspect"] == {"index": None, "n": 0, "reliable": False,
+                           "pos_share": None, "neu_share": None, "neg_share": None}
+    assert all(e["mentions"] is False for e in s["positive"] + s["negative"])
     assert p["irr"] == {"value": None, "low": None, "high": None, "pval": None,
                         "reliable": False, "significant": False}
 
@@ -154,3 +158,29 @@ def test_api_works_before_precompute(ingested_db):
 def test_cors(client):
     r = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
     assert r.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_profile_aspect_sentiment(api_db):
+    # "Rust is nice" — единственный комментарий к "Rust vs Golang": для Rust он и аспект, и пример о Rust
+    with make_client(api_db, min_sentiment_comments=1) as c:
+        rust = c.get("/api/techs/rust").json()["sentiment"]
+        go = c.get("/api/techs/go").json()["sentiment"]
+    assert rust["aspect"]["n"] == 1 and rust["aspect"]["reliable"] is True
+    assert rust["aspect"]["pos_share"] == 1.0
+    assert [(e["comment_id"], e["mentions"]) for e in rust["positive"]] == [(15, True)]
+    assert go["n"] == 1 and go["aspect"]["n"] == 0 and go["aspect"]["reliable"] is False
+    assert [(e["comment_id"], e["mentions"]) for e in go["positive"]] == [(15, False)]
+
+
+def test_irr_without_finite_interval_is_unreliable(api_db):
+    from sqlalchemy import update
+
+    from db.models import Tech, TechMetrics
+    with session_scope(api_db) as session:
+        cpp_id = session.query(Tech.id).filter(Tech.name == "cpp").scalar()
+        session.execute(update(TechMetrics).where(TechMetrics.tech_id == cpp_id)
+                        .values(irr=2.0, irr_low=None, irr_high=None, irr_pval=0.5))
+        session.commit()
+    with make_client(api_db, min_irr_stories=1) as c:
+        irr = c.get("/api/techs/cpp").json()["irr"]
+    assert irr["value"] == 2.0 and irr["reliable"] is False and irr["significant"] is False

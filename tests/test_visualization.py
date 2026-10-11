@@ -126,3 +126,8 @@ def test_sentiment_plot_empty_csv(tmp_path):
     src.write_text("file,mode,keyword,sentiment_index\n", encoding="utf-8")
     with pytest.raises(ValueError):
         draw_sentiment_plot.plot_summary_csv(src, tmp_path / "x.png")
+
+
+def test_content_words_with_extra_stop():
+    assert words.content_words("the rust compiler is fast <NUM>", {"rust"}) == ["compiler", "fast"]
+    assert "rust" not in words.EN_STOP

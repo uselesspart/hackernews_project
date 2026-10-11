@@ -14,9 +14,11 @@ describe("страница технологии", () => {
     expect(document.title).toBe("Rust — технологии на Hacker News");
 
     const sentiment = screen.getByRole("region", { name: "Тон комментариев" });
-    expect(within(sentiment).getByText(/Индекс тона/)).toHaveTextContent("+0,24");
-    expect(within(sentiment).getByRole("heading", { name: "Самые позитивные" })).toBeInTheDocument();
-    expect(within(sentiment).getAllByRole("link", { name: /Весь комментарий на HN/ })).toHaveLength(6);
+    // Общий тон надёжен (54 комментария), тон о самом Rust — нет (13 реплик): доли только у общего
+    expect(within(sentiment).getByText(/^Индекс тона\s*$/)).toHaveTextContent("+0,25");
+    expect(within(sentiment).getByText(/Мало данных: 13 реплик о Rust/)).toBeInTheDocument();
+    expect(within(sentiment).getByRole("heading", { name: "Самые позитивные о Rust" })).toBeInTheDocument();
+    expect(within(sentiment).getAllByRole("link", { name: /Весь комментарий на HN/ })).toHaveLength(5);
 
     const stories = screen.getByRole("region", { name: "Статьи" });
     // В выборке статья опубликована дважды — оба экземпляра остаются в списке
@@ -39,7 +41,41 @@ describe("страница технологии", () => {
     const sentiment = await screen.findByRole("region", { name: "Тон комментариев" });
     expect(within(sentiment).getByText(/Мало данных для оценки тона: 12 комментариев/)).toBeInTheDocument();
     expect(within(sentiment).queryByText(/Индекс тона/)).toBeNull();
-    expect(within(sentiment).getByRole("heading", { name: "Самые негативные" })).toBeInTheDocument();
+    expect(within(sentiment).getByRole("heading", { name: "Самые негативные о Rust" })).toBeInTheDocument();
+  });
+
+  it("надёжный тон о технологии: две шкалы, о Rust — первой", async () => {
+    const aspect = { index: -0.1, n: 40, reliable: true, pos_share: 0.2, neu_share: 0.4, neg_share: 0.4 };
+    const rich = { ...rust, sentiment: { ...rust.sentiment, aspect } };
+    mockApi((url) => (url.pathname === "/api/techs/rust" ? { body: rich } : undefined));
+    renderRoute("/tech/rust");
+    const sentiment = await screen.findByRole("region", { name: "Тон комментариев" });
+    const indexes = within(sentiment).getAllByText(/^Индекс тона\s*$/);
+    expect(indexes.map((el) => el.textContent)).toEqual(["Индекс тона -0,10", "Индекс тона +0,25"]);
+    expect(within(sentiment).getByText(/из них Rust прямо называют в 40 комментариях/)).toBeInTheDocument();
+    expect(screen.getByText(/Когда говорят о Rust, негативных реплик больше, чем позитивных: 40\s%/)).toBeInTheDocument();
+  });
+
+  it("примеры без упоминания технологии подписаны как «в обсуждениях»", async () => {
+    const negative = rust.sentiment.negative.map((c) => ({ ...c, mentions: false }));
+    const body = { ...rust, sentiment: { ...rust.sentiment, aspect: { ...rust.sentiment.aspect, n: 0 }, negative } };
+    mockApi((url) => (url.pathname === "/api/techs/rust" ? { body } : undefined));
+    renderRoute("/tech/rust");
+    const sentiment = await screen.findByRole("region", { name: "Тон комментариев" });
+    expect(within(sentiment).getByRole("heading", { name: "Самые негативные в обсуждениях" })).toBeInTheDocument();
+    expect(within(sentiment).getByRole("heading", { name: "Самые позитивные о Rust" })).toBeInTheDocument();
+    expect(within(sentiment).getByText(/Rust в этих комментариях прямо не называют/)).toBeInTheDocument();
+    expect(within(sentiment).queryByText(/из них Rust прямо называют/)).toBeNull();
+  });
+
+  it("без соседей по модели финал ведёт к технологиям той же категории", async () => {
+    // В фикстуре Rust нет ни общих заголовков, ни соседей: модель малого корпуса вырождена
+    mockApi();
+    renderRoute("/tech/rust");
+    const related = await screen.findByRole("region", { name: "Рядом с Rust" });
+    expect(within(related).getByRole("heading", { name: "Из той же категории" })).toBeInTheDocument();
+    expect(await within(related).findByRole("link", { name: /^JavaScript/ })).toHaveAttribute("href", "/tech/javascript");
+    expect(within(related).queryByRole("link", { name: /^Rust/ })).toBeNull();
   });
 
   it("технология без статей: объясняет и предлагает другие", async () => {

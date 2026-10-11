@@ -8,7 +8,8 @@ from db import session_scope
 from db.models import Story, Tech, story_tech
 from utils.cli import cli_main
 
-FIELDS = ["id", "title", "score", "time", "descendants", "techs_count", "tech_names"]
+# url — в конце, чтобы старые потребители CSV по позициям не сломались; по ней IRR контролирует формат статьи
+FIELDS = ["id", "title", "score", "time", "descendants", "techs_count", "tech_names", "url"]
 
 
 def build_stmt():
@@ -33,6 +34,7 @@ def build_stmt():
             Story.descendants,
             func.coalesce(tech_agg.c.techs_count, 0),
             func.coalesce(tech_agg.c.tech_names, ""),
+            Story.url,
         )
         .outerjoin(tech_agg, tech_agg.c.story_id == Story.id)
         .order_by(Story.descendants.desc(), Story.id.asc())
@@ -59,9 +61,9 @@ def main() -> int:
     with session_scope(args.db) as session, open(out_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(FIELDS)
-        for story_id, title, score, time, descendants, techs_count, tech_names in session.execute(build_stmt()):
+        for story_id, title, score, time, descendants, techs_count, tech_names, url in session.execute(build_stmt()):
             writer.writerow([story_id, title, score, time.isoformat() if time else "",
-                             descendants, techs_count, tech_names])
+                             descendants, techs_count, tech_names, url or ""])
 
     print(f"Готово: экспорт данных в {out_path}")
     return 0

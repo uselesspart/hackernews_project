@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, inspect, select
 
 from db import session_scope, upgrade_schema
 from db.models import Story, Tech
-from db.queries import is_alive, iter_story_titles, iter_tech_names
+from db.queries import is_alive, iter_story_titles, iter_tech_names, iter_tech_thread_comments
 
 
 def _create_legacy_db(path):
@@ -72,3 +72,12 @@ def test_iter_tech_names(db_url):
         session.commit()
         assert sorted(name for _, name in iter_tech_names(session)) == ["python", "rust"]
         assert len(list(iter_tech_names(session, limit=1))) == 1
+
+
+def test_iter_tech_thread_comments(classified_db):
+    # Ветки статей с технологиями: 1 (C++) и 2 (Rust, Go). Статья 3 — dead, 4 — без технологий.
+    # Комментарий 12 — dead (ответ 13 остаётся), 14 — deleted. Каждый комментарий — один раз.
+    with session_scope(classified_db) as session:
+        rows = list(iter_tech_thread_comments(session))
+    assert [(cid, story) for cid, _, story in rows] == [(10, 1), (11, 1), (13, 1), (15, 2)]
+    assert rows[-1][1] == "Rust is nice"

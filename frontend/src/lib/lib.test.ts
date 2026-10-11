@@ -6,7 +6,7 @@ import fossil from "../test/fixtures/profile-fossil.json";
 import rust from "../test/fixtures/profile-rust.json";
 import meta from "../test/fixtures/meta.json";
 import { endSentence, formatPeriod, formatShare, plural, STORIES, timesLabel } from "./format";
-import { buildLead, irrSentence } from "./summary";
+import { buildLead, irrSentence, toneSentence } from "./summary";
 
 const rustProfile = rust as TechProfile;
 
@@ -52,7 +52,8 @@ describe("buildLead", () => {
   it("выносит в вывод место и надёжный тон, но не ненадёжный IRR", () => {
     const lead = buildLead(rustProfile, meta).join(" ");
     expect(lead).toContain("2-е место по числу статей: 14 статей из 161");
-    expect(lead).toMatch(/Позитивных комментариев больше, чем негативных: 59\s%/);
+    // Тон о самом Rust ненадёжен (13 реплик) — в вывод идёт тон всего обсуждения, и это сказано словами
+    expect(lead).toMatch(/В обсуждениях статей о Rust позитивных комментариев больше, чем негативных: 63\s%/);
     expect(lead).not.toMatch(/комментариев собирают/);
   });
 
@@ -60,7 +61,7 @@ describe("buildLead", () => {
     const thin = { ...rustProfile, sentiment: { ...rustProfile.sentiment, reliable: false, n: 8 } };
     const lead = buildLead(thin, meta).join(" ");
     expect(lead).toContain("Для оценки тона пока мало комментариев: 8.");
-    expect(lead).not.toMatch(/Позитивных/);
+    expect(lead).not.toMatch(/позитивных/);
   });
 
   it("пустой вывод для технологии без статей", () => {
@@ -75,5 +76,27 @@ describe("buildLead", () => {
     expect(irrSentence({ ...base, value: 0.5 }, "Rust")).toContain("в 2 раза меньше");
     expect(irrSentence({ ...base, value: 1.1, significant: false }, "Rust")).toContain("Заметной связи");
     expect(irrSentence({ ...base, value: 1.84, reliable: false }, "Rust")).toBeNull();
+  });
+});
+
+describe("toneSentence", () => {
+  const shares = { index: 0.1, reliable: true, pos_share: 0.5, neu_share: 0.3, neg_share: 0.2 };
+  const base = { ...rustProfile.sentiment, ...shares, n: 100, aspect: { ...shares, n: 40, pos_share: 0.3, neg_share: 0.3 } };
+
+  it("предпочитает тон о самой технологии", () => {
+    expect(toneSentence(base, "Rust")?.replace(/\s/g, " ")).toBe("Когда говорят о Rust, позитивных и негативных реплик поровну: по 30 %.");
+  });
+
+  it("без надёжного аспекта — тон обсуждения с явной оговоркой", () => {
+    const s = { ...base, aspect: { ...base.aspect, reliable: false } };
+    expect(toneSentence(s, "Rust")?.replace(/\s/g, " ")).toBe(
+      "В обсуждениях статей о Rust позитивных комментариев больше, чем негативных: 50 % против 20 %.",
+    );
+  });
+
+  it("ничего надёжного — честно про объём, без комментариев — молчит", () => {
+    const thin = { ...base, reliable: false, aspect: { ...base.aspect, reliable: false } };
+    expect(toneSentence(thin, "Rust")).toBe("Для оценки тона пока мало комментариев: 100.");
+    expect(toneSentence({ ...thin, n: 0 }, "Rust")).toBeNull();
   });
 });

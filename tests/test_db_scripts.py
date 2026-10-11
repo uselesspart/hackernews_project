@@ -132,6 +132,7 @@ def test_export_stories_meta(run_cli, classified_db, tmp_path):
     assert rows[2]["techs_count"] == "2" and sorted(rows[2]["tech_names"].split("|")) == ["go", "rust"]
     assert rows[4]["techs_count"] == "0" and rows[4]["tech_names"] == ""
     assert rows[1]["time"] == "2023-11-14T22:13:20"
+    assert rows[1]["url"] == "https://example.com/1" and rows[2]["url"] == ""
     # Сортировка по числу комментариев по убыванию
     assert list(rows) == [1, 2, 3, 4]
 

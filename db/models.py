@@ -94,6 +94,13 @@ class TechMetrics(Base):
     neu_share: Mapped[float | None] = mapped_column(Float)
     neg_share: Mapped[float | None] = mapped_column(Float)
 
+    # Аспектный тон: только предложения, где упомянута сама технология
+    aspect_n: Mapped[int | None] = mapped_column(Integer)
+    aspect_index: Mapped[float | None] = mapped_column(Float)
+    aspect_pos_share: Mapped[float | None] = mapped_column(Float)
+    aspect_neu_share: Mapped[float | None] = mapped_column(Float)
+    aspect_neg_share: Mapped[float | None] = mapped_column(Float)
+
     irr: Mapped[float | None] = mapped_column(Float)
     irr_low: Mapped[float | None] = mapped_column(Float)
     irr_high: Mapped[float | None] = mapped_column(Float)
@@ -132,3 +139,5 @@ class SentimentExample(Base):
     label: Mapped[int] = mapped_column(Integer)  # 1 — положительный, -1 — отрицательный
     score: Mapped[float] = mapped_column(Float)
     text: Mapped[str] = mapped_column(String)
+    # True — пример из реплики с упоминанием технологии, score — тон этих предложений
+    mentions: Mapped[bool | None] = mapped_column(Boolean)

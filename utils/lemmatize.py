@@ -141,6 +141,17 @@ def tokenize_and_lemmatize(
     return tokens
 
 
+def tokenize_and_lemmatize_many(texts: list[str], *, lemmatize_en: bool = True,
+                                preserve_words: set[str] | None = None) -> list[list[str]]:
+    """Как tokenize_and_lemmatize для каждого текста, но новые слова всей пачки идут в spaCy одним вызовом."""
+    tokenized = [_tokenize(t, keep_punct=False, num_token="<NUM>", lower=True) for t in texts]
+    if not lemmatize_en:
+        return tokenized
+    preserve_words = preserve_words or set()
+    _fill_lemma_cache((t for tokens in tokenized for t in tokens), preserve_words)
+    return [_apply_lemmas(tokens, preserve_words) for tokens in tokenized]
+
+
 def _tokenize(text: str, *, keep_punct: bool, num_token: str | None, lower: bool) -> list[str]:
     text = canonicalize_tech_mentions(text)
     if lower:

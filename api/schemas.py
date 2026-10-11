@@ -61,13 +61,21 @@ class CommentExample(BaseModel):
     label: Literal[1, -1]
     score: float
     text: str
+    mentions: bool = Field(description="Реплика упоминает технологию, score — тон этих предложений; "
+                                       "false — таких примеров нет, взят тон комментария целиком")
     hn_url: str
 
 
-class Sentiment(SentimentBrief):
+class SentimentShares(SentimentBrief):
     pos_share: float | None
     neu_share: float | None
     neg_share: float | None
+
+
+class Sentiment(SentimentShares):
+    """Тон комментариев целиком (index, n, доли) и тон предложений о самой технологии (aspect)."""
+    aspect: SentimentShares = Field(description="Только предложения, где упомянута технология; "
+                                                "n — сколько комментариев её упоминают")
     positive: list[CommentExample]
     negative: list[CommentExample]
 

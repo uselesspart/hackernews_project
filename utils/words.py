@@ -67,10 +67,14 @@ def tokenize(text: str):
     return [w for w in text.split() if len(w) > 2]
 
 
-def build_frequencies(comments: list[str], extra_stop: set[str] | None = None):
+def content_words(text: str, extra_stop: set[str] | None = None) -> list[str]:
     # Новое множество, а не |= : иначе стоп-слова копились бы в глобальном EN_STOP
-    stop = EN_STOP | (extra_stop or set())
+    stop = EN_STOP | extra_stop if extra_stop else EN_STOP
+    return [w for w in tokenize(clean_text(text)) if w not in stop]
+
+
+def build_frequencies(comments: list[str], extra_stop: set[str] | None = None):
     counter = Counter()
     for c in comments:
-        counter.update(w for w in tokenize(clean_text(c)) if w not in stop)
+        counter.update(content_words(c, extra_stop))
     return dict(counter)

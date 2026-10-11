@@ -16,6 +16,8 @@ from utils.vectors import cosine
 MAX_TECHS_PER_TITLE = 3
 MIN_FREQ = 5
 TOP_N = 50
+# Выше — признак почти линейно выражается через остальные: коэффициенты уходят в 1e+100 и обратно
+MAX_VIF = 10.0
 
 
 def build_group_maps(w2v: Word2Vec, raw_categories: dict):
@@ -114,10 +116,47 @@ def linearly_dependent_columns(X: pd.DataFrame) -> list[str]:
     return dependent
 
 
-def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
+def is_tech_feature(name: str) -> bool:
+    return name.startswith("has_") and not name.startswith("has_pair_")
+
+
+def variance_inflation(X: pd.DataFrame) -> pd.Series:
+    """VIF каждого столбца: диагональ обратной корреляционной матрицы (считается по X'X, p x p)."""
+    values = X.to_numpy(dtype=np.float64)
+    n = len(values)
+    mean = values.mean(axis=0)
+    cov = (values.T @ values - n * np.outer(mean, mean)) / max(n - 1, 1)
+    sd = np.sqrt(np.clip(np.diag(cov), 1e-300, None))
+    corr = cov / np.outer(sd, sd)
+    try:
+        inv = np.linalg.inv(corr)
+    except np.linalg.LinAlgError:
+        inv = np.linalg.pinv(corr)
+    return pd.Series(np.abs(np.diag(inv)), index=X.columns)
+
+
+def high_vif_columns(X: pd.DataFrame, max_vif: float) -> list[str]:
+    """
+    По одному убирает признак с наибольшим VIF выше max_vif, пока такие есть.
+    Сначала — пары, контроли и sim_*: ради IRR технологий (has_*) модель и строится.
+    """
+    cols, dropped = list(X.columns), []
+    while len(cols) >= 2:
+        vif = variance_inflation(X[cols])
+        over = vif[vif > max_vif]
+        if over.empty:
+            break
+        worst = max(over.index, key=lambda c: (not is_tech_feature(c), over[c]))
+        dropped.append(worst)
+        cols.remove(worst)
+    return dropped
+
+
+def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str, max_vif: float | None = None):
     """
     GLM для числа комментариев. По умолчанию — отрицательная биномиальная (NB2):
     число комментариев сильно сверхдисперсно, и у Пуассона ошибки занижены.
+    max_vif — порог мультиколлинеарности; None — не проверять.
     """
     X = sm.add_constant(X, has_constant="add")
     dependent = linearly_dependent_columns(X)
@@ -125,6 +164,11 @@ def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
         print(f"Warning: матрица признаков вырождена, исключены линейно зависимые признаки: "
               f"{', '.join(dependent)}")
         X = X.drop(columns=dependent)
+    if max_vif:
+        collinear = high_vif_columns(X.drop(columns="const"), max_vif)
+        if collinear:
+            print(f"Warning: исключены почти коллинеарные признаки (VIF > {max_vif:g}): {', '.join(collinear)}")
+            X = X.drop(columns=collinear)
     poisson = sm.GLM(y, X, family=sm.families.Poisson())
     if family == "poisson":
         # Робастные (sandwich) ошибки не требуют предположения var = mean
@@ -137,7 +181,8 @@ def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str):
 
 
 def load_titles(path: str, max_rows: int, sample: int | None) -> pd.DataFrame:
-    df = pd.read_csv(path, usecols=['title', 'descendants'])
+    # url есть в выгрузках export_stories_meta новых версий; без неё контроль has_url не строится
+    df = pd.read_csv(path, usecols=lambda c: c in {'title', 'descendants', 'url'})
     print(f"Загружено строк: {len(df)}")
     df = df[df['descendants'] >= 0]
     print(f"С известным числом комментариев: {len(df)}")
@@ -162,20 +207,41 @@ def to_groups(tech_lists: pd.Series, w2v: Word2Vec):
     return tech_lists.apply(map_tokens), group_vecs
 
 
-def top_labels(tech_lists: pd.Series) -> tuple[pd.Series, list[str], list[tuple[str, str]]]:
+def top_labels(tech_lists: pd.Series,
+               top_n: int | None = TOP_N) -> tuple[pd.Series, list[str], list[tuple[str, str]]]:
+    """Технологии не реже MIN_FREQ (не больше top_n; None — все) и частые пары."""
     labels = [t for xs in tech_lists for t in xs]
     if not labels:
         raise ValueError("Не удалось извлечь ни одной технологии/группы из заголовков.")
     freq = pd.Series(labels).value_counts()  # равные частоты — в порядке первого появления
-    top_tech = freq[freq >= MIN_FREQ].index.tolist()[:TOP_N]
+    top_tech = freq[freq >= MIN_FREQ].index.tolist()[:top_n]
     pair_freq = Counter(pair for xs in tech_lists for pair in combinations(sorted(xs), 2))
     top_pairs = [p for p, c in pd.Series(dict(pair_freq), dtype=int).sort_values(ascending=False).items()
                  if c >= MIN_FREQ][:TOP_N]
     return freq, top_tech, top_pairs
 
 
-def build_features(tech_lists: pd.Series, top_tech, top_pairs, vec_map) -> pd.DataFrame:
+def control_features(df: pd.DataFrame) -> dict[str, pd.Series]:
+    """
+    Формат статьи, а не тема: без этих признаков IRR технологии смешивается с тем, что о ней
+    чаще пишут Show HN или Ask HN без ссылки, а такие статьи обсуждают иначе.
+    """
+    title = df['title'].fillna("").astype(str)
+    features = {
+        'title_words': title.str.split().str.len().astype(np.float64),
+        'show_hn': title.str.match(r"(?i)show\s+hn\b").astype(np.int8),
+        'ask_hn': title.str.match(r"(?i)ask\s+hn\b").astype(np.int8),
+    }
+    if 'url' in df:
+        features['has_url'] = (df['url'].fillna("").astype(str).str.len() > 0).astype(np.int8)
+    return features
+
+
+def build_features(tech_lists: pd.Series, top_tech, top_pairs, vec_map,
+                   controls: dict[str, pd.Series] | None = None) -> pd.DataFrame:
     features = indicator_features(tech_lists, top_tech, top_pairs)
+    controls = controls or {}
+    features.update(controls)
 
     pair_sim = PairSimilarity(vec_map)
     sims = pd.DataFrame([pair_sim.stats(xs) for xs in tech_lists], columns=['sim_min', 'sim_mean', 'sim_max'])
@@ -189,8 +255,10 @@ def build_features(tech_lists: pd.Series, top_tech, top_pairs, vec_map) -> pd.Da
     top_set = set(top_tech)
     features['other_techs_count'] = tech_lists.apply(lambda xs: sum(t not in top_set for t in xs)).astype(np.int8)
 
-    columns = ['other_techs_count', 'sim_min', 'sim_mean',
-               *(f'has_{t}' for t in top_tech), *(f'has_pair_{a}__{b}' for a, b in top_pairs)]
+    # Технологии — первыми: linearly_dependent_columns оставляет столбцы слева направо,
+    # и при вырожденности должен уйти контроль, а не IRR технологии
+    columns = [*(f'has_{t}' for t in top_tech), *controls, 'other_techs_count', 'sim_min', 'sim_mean',
+               *(f'has_pair_{a}__{b}' for a, b in top_pairs)]
     X = pd.DataFrame(features)[columns].astype(np.float64)
     return X.replace([np.inf, -np.inf], 0.0).fillna(0.0)
 
@@ -225,12 +293,21 @@ def parse_args():
                    help="Семейство GLM: negbin (по умолчанию) или poisson с робастными ошибками")
     p.add_argument("--groups", action="store_true",
                    help="Агрегировать технологии в группы из utils.groups.categories")
+    p.add_argument("--top-n", type=int, default=TOP_N,
+                   help=f"Сколько самых частых технологий включать (по умолчанию {TOP_N}; "
+                        f"0 — все, что встречаются не реже {MIN_FREQ} раз)")
+    p.add_argument("--max-vif", type=float, default=MAX_VIF,
+                   help=f"Порог VIF для исключения почти коллинеарных признаков "
+                        f"(по умолчанию {MAX_VIF:g}; 0 — не проверять)")
+    p.add_argument("--no-controls", action="store_true",
+                   help="Без контроля формата статьи (длина заголовка, ссылка, Show/Ask HN)")
     return p.parse_args()
 
 
-def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups: bool = False) -> pd.DataFrame:
+def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups: bool = False,
+                top_n: int | None = TOP_N, controls: bool = True, max_vif: float | None = MAX_VIF) -> pd.DataFrame:
     """
-    Таблица IRR по DataFrame с колонками title и descendants (индекс — позиционный).
+    Таблица IRR по DataFrame с колонками title, descendants и (необязательно) url; индекс — позиционный.
     Базовая категория — статьи без технологий из топа, поэтому на вход нужны все статьи,
     а не только статьи с технологиями.
     """
@@ -239,12 +316,12 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups:
     if groups:
         tech_lists, vec_map = to_groups(tech_lists, w2v)
 
-    freq, top_tech, top_pairs = top_labels(tech_lists)
+    freq, top_tech, top_pairs = top_labels(tech_lists, top_n)
     print(f"В модели: {len(top_tech)} {'групп' if groups else 'технологий'}, {len(top_pairs)} пар")
     if not groups:
         vec_map = token_vec_map(w2v, freq.index)
 
-    X = build_features(tech_lists, top_tech, top_pairs, vec_map)
+    X = build_features(tech_lists, top_tech, top_pairs, vec_map, control_features(df) if controls else None)
     y = df['descendants'].to_numpy(dtype=np.float64)
 
     # Постоянный признак (например, sim_* когда нет заголовков с 2+ технологиями)
@@ -254,9 +331,16 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups:
         print(f"Исключены постоянные признаки: {', '.join(constant_cols)}")
         X = X.drop(columns=constant_cols)
 
+    # Если ни у одной статьи с признаком нет комментариев, оценка уходит в минус бесконечность
+    # (IRR около 0 с интервалом до бесконечности) — это не измерение, а отсутствие данных
+    silent = [c for c in X.columns if c.startswith("has_") and y[X[c].to_numpy() > 0].sum() == 0]
+    if silent:
+        print(f"Исключены признаки без единого комментария: {', '.join(silent)}")
+        X = X.drop(columns=silent)
+
     print(f"Строк: {len(X)}, признаков: {X.shape[1]}; "
           f"комментарии: среднее={y.mean():.2f}, дисперсия={y.var():.2f}")
-    result, alpha = fit_count_model(X, y, family)
+    result, alpha = fit_count_model(X, y, family, max_vif=max_vif)
     if alpha is not None:
         print(f"Оценка сверхдисперсии NB: alpha={alpha:.4f}")
     return irr_table(result)
@@ -266,7 +350,8 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups:
 def main() -> int:
     args = parse_args()
     df = load_titles(args.input, args.max_rows, args.sample)
-    coef_df = compute_irr(df, Word2Vec.load(args.model), args.family, args.groups)
+    coef_df = compute_irr(df, Word2Vec.load(args.model), args.family, args.groups, top_n=args.top_n or None,
+                          controls=not args.no_controls, max_vif=args.max_vif or None)
     coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
     print(f"Готово: коэффициенты сохранены в {args.output}")
     print("\nТоп-10 признаков по IRR:")
