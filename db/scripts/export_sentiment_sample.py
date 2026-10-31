@@ -17,7 +17,8 @@ from db.models import Story, Tech, story_tech
 from db.queries import is_alive, iter_tech_thread_comments, story_tech_keys
 from utils.cli import cli_main
 
-FIELDS = ["tech", "comment_id", "hn_url", "mentions", "text", "label_comment", "label_tech"]
+FIELDS = ["tech", "comment_id", "hn_url", "mentions", "text", "label_comment", "label_tech",
+          "story_id", "title", "annotation_source", "annotation_notes"]
 HN_ITEM_URL = "https://news.ycombinator.com/item?id={}"
 
 
@@ -29,12 +30,16 @@ def top_techs(session, n: int) -> list[str]:
     return list(session.scalars(stmt))
 
 
-def sample_comments(session, techs: list[str], per_tech: int, seed: int) -> list[dict]:
+def sample_comments(session, techs: list[str], per_tech: int, seed: int,
+                    exclude_story_ids: set[int] | None = None) -> list[dict]:
     """По per_tech комментариев на технологию: половина с упоминанием, половина без (если хватает)."""
     wanted = set(techs)
     story_keys = story_tech_keys(session)
-    pools: dict[tuple[str, bool], list[tuple[int, str]]] = {(t, m): [] for t in techs for m in (True, False)}
+    titles = {sid: title for sid, title in session.execute(select(Story.id, Story.title))}
+    pools: dict[tuple[str, bool], list[tuple[int, str, int]]] = {(t, m): [] for t in techs for m in (True, False)}
     for cid, raw, story_id in iter_tech_thread_comments(session):
+        if story_id in (exclude_story_ids or ()):
+            continue
         keys = wanted.intersection(story_keys.get(story_id, ()))
         if not keys:
             continue
@@ -44,7 +49,7 @@ def sample_comments(session, techs: list[str], per_tech: int, seed: int) -> list
         for key in keys:
             pattern = COMPILED_PATTERNS.get(key)
             mentions = pattern is not None and mention_text(parts, pattern) is not None
-            pools[(key, mentions)].append((cid, parts.prose))
+            pools[(key, mentions)].append((cid, parts.prose, story_id))
 
     rng = Random(seed)
     rows = []
@@ -54,9 +59,11 @@ def sample_comments(session, techs: list[str], per_tech: int, seed: int) -> list
         k_with = min(len(with_m), max(per_tech - per_tech // 2, per_tech - len(without)))
         k_without = min(len(without), per_tech - k_with)
         for mentions, pool, k in ((True, with_m, k_with), (False, without, k_without)):
-            for cid, text in sorted(rng.sample(pool, k)):
+            for cid, text, story_id in sorted(rng.sample(pool, k)):
                 rows.append({"tech": tech, "comment_id": cid, "hn_url": HN_ITEM_URL.format(cid),
-                             "mentions": int(mentions), "text": text, "label_comment": "", "label_tech": ""})
+                             "mentions": int(mentions), "text": text, "label_comment": "", "label_tech": "",
+                             "story_id": story_id, "title": titles[story_id],
+                             "annotation_source": "", "annotation_notes": ""})
     return rows
 
 
@@ -73,17 +80,27 @@ def parse_args():
     p.add_argument("--top", type=int, default=6, help="Сколько самых частых технологий взять (по умолчанию 6)")
     p.add_argument("--per-tech", type=int, default=50, help="Комментариев на технологию (по умолчанию 50)")
     p.add_argument("--seed", type=int, default=42, help="Сид выборки (по умолчанию 42)")
+    p.add_argument("--exclude-sample", help="CSV выборки: исключить все её story_id (для независимого обучения)")
     return p.parse_args()
 
 
 @cli_main
 def main() -> int:
     args = parse_args()
+    if args.per_tech <= 0 or args.top <= 0:
+        raise ValueError("--per-tech и --top должны быть положительными")
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+    excluded = set()
+    if args.exclude_sample:
+        with open(args.exclude_sample, encoding="utf-8-sig", newline="") as f:
+            excluded_rows = list(csv.DictReader(f))
+        if not excluded_rows or any(not r.get("story_id") for r in excluded_rows):
+            raise ValueError("--exclude-sample должен содержать story_id для каждой строки")
+        excluded = {int(r["story_id"]) for r in excluded_rows}
     with session_scope(args.db) as session:
         techs = [t.strip() for t in args.techs.split(",") if t.strip()] if args.techs else top_techs(session, args.top)
-        rows = sample_comments(session, techs, args.per_tech, args.seed)
+        rows = sample_comments(session, techs, args.per_tech, args.seed, excluded)
     # utf-8-sig: Excel открывает такой CSV без кракозябр
     with out.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDS)

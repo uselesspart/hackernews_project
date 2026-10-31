@@ -1,9 +1,30 @@
+# Python environments and caches
 venv/
-raw_data/
+.venv/
 __pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+
+# Local datasets, models, and database files
+raw_data/
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 artifacts/
 bases/
 dataset.jsonl.gz
-.pytest_cache/
+
+# Coverage output
 .coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Local configuration; keep example templates versioned
+.env
+.env.*
+!.env.example
+!.env.sample

@@ -1,4 +1,5 @@
 import argparse
+import json
 from collections import Counter
 from itertools import combinations
 
@@ -284,7 +285,7 @@ def parse_args():
         prog="calculate_irr",
         description="IRR технологий: во сколько раз упоминание технологии меняет ожидаемое число комментариев"
     )
-    p.add_argument("-m", "--model", required=True, help="Путь к модели Word2Vec (.model)")
+    p.add_argument("-m", "--model", help="Модель Word2Vec (.model); без неё — только индикаторы и контроли")
     p.add_argument("-i", "--input", required=True, help="CSV с метаданными статей (export_stories_meta)")
     p.add_argument("-o", "--output", required=True, help="Путь к выходному CSV с коэффициентами")
     p.add_argument("--sample", type=int, default=None, help="Случайная выборка N строк (для отладки)")
@@ -301,11 +302,15 @@ def parse_args():
                         f"(по умолчанию {MAX_VIF:g}; 0 — не проверять)")
     p.add_argument("--no-controls", action="store_true",
                    help="Без контроля формата статьи (длина заголовка, ссылка, Show/Ask HN)")
+    p.add_argument("--no-interactions", action="store_true",
+                   help="Без пар технологий: начальная модель главных эффектов")
+    p.add_argument("--diagnostics-json", help="Сохранить объём, дисперсию, alpha, сходимость и признаки в JSON")
     return p.parse_args()
 
 
-def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups: bool = False,
-                top_n: int | None = TOP_N, controls: bool = True, max_vif: float | None = MAX_VIF) -> pd.DataFrame:
+def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "negbin", groups: bool = False,
+                top_n: int | None = TOP_N, controls: bool = True, max_vif: float | None = MAX_VIF,
+                interactions: bool = True) -> pd.DataFrame:
     """
     Таблица IRR по DataFrame с колонками title, descendants и (необязательно) url; индекс — позиционный.
     Базовая категория — статьи без технологий из топа, поэтому на вход нужны все статьи,
@@ -314,12 +319,16 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups:
     print("Извлечение технологий из заголовков...")
     tech_lists = df['title'].apply(extract_tech_regex)
     if groups:
+        if w2v is None:
+            raise ValueError("Для --groups нужна --model")
         tech_lists, vec_map = to_groups(tech_lists, w2v)
 
     freq, top_tech, top_pairs = top_labels(tech_lists, top_n)
+    if not interactions:
+        top_pairs = []
     print(f"В модели: {len(top_tech)} {'групп' if groups else 'технологий'}, {len(top_pairs)} пар")
     if not groups:
-        vec_map = token_vec_map(w2v, freq.index)
+        vec_map = token_vec_map(w2v, freq.index) if w2v is not None else {}
 
     X = build_features(tech_lists, top_tech, top_pairs, vec_map, control_features(df) if controls else None)
     y = df['descendants'].to_numpy(dtype=np.float64)
@@ -343,16 +352,30 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec, family: str = "negbin", groups:
     result, alpha = fit_count_model(X, y, family, max_vif=max_vif)
     if alpha is not None:
         print(f"Оценка сверхдисперсии NB: alpha={alpha:.4f}")
-    return irr_table(result)
+    table = irr_table(result)
+    table.attrs['diagnostics'] = {
+        'family': family, 'n_stories': len(df), 'stories_without_detected_techs': int(tech_lists.map(len).eq(0).sum()),
+        'mean_comments': float(y.mean()), 'variance_comments': float(y.var()), 'alpha': alpha,
+        'converged': bool(result.converged), 'deviance': float(result.deviance),
+        'features': list(result.params.index), 'tech_frequencies': {str(t): int(n) for t, n in freq.items()},
+        'controls': controls, 'interactions': interactions, 'embeddings': w2v is not None,
+        'interpretation': 'Adjusted observational associations, not causal effects; 95% Wald intervals are conditional '
+                          'on the estimated dispersion and feature selection.'}
+    return table
 
 
 @cli_main
 def main() -> int:
     args = parse_args()
     df = load_titles(args.input, args.max_rows, args.sample)
-    coef_df = compute_irr(df, Word2Vec.load(args.model), args.family, args.groups, top_n=args.top_n or None,
-                          controls=not args.no_controls, max_vif=args.max_vif or None)
+    model = Word2Vec.load(args.model) if args.model else None
+    coef_df = compute_irr(df, model, args.family, args.groups, top_n=args.top_n or None,
+                          controls=not args.no_controls, max_vif=args.max_vif or None,
+                          interactions=not args.no_interactions)
     coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
+    if args.diagnostics_json:
+        with open(args.diagnostics_json, 'w', encoding='utf-8') as f:
+            json.dump(coef_df.attrs['diagnostics'], f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"Готово: коэффициенты сохранены в {args.output}")
     print("\nТоп-10 признаков по IRR:")
     top_features = coef_df[coef_df['feature'] != 'const'].nlargest(10, 'IRR')

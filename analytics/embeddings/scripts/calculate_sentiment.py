@@ -192,6 +192,8 @@ def combined_doc_vec(text, model_titles, model_comments):
     return np.concatenate([v1, v2])
 
 def bootstrap_classifier(texts, model_titles, model_comments, polarity_lex, keyword=None, top_percent=20):
+    if not texts:
+        return None
     attention = AspectAttention(model_comments, keyword)
     scores = np.array([aspect_sentiment_score(t, model_comments, polarity_lex, attention=attention) for t in texts])
     labels = np.array([label_from_score(s) for s in scores])
@@ -202,7 +204,7 @@ def bootstrap_classifier(texts, model_titles, model_comments, polarity_lex, keyw
     X = np.vstack([combined_doc_vec(texts[i], model_titles, model_comments) for i in np.where(idx)[0]])
     y = labels[idx]
 
-    if len(y) < 50:
+    if len(y) < 50 or len(np.unique(y)) < 2:
         print("Слишком мало уверенных псевдометок для bootstrap; используется lexicon", file=sys.stderr)
         return None
 
