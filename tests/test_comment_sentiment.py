@@ -105,6 +105,23 @@ def test_examples_top_k_order_and_ties():
     assert ids == [2, 3]  # по убыванию тона, при равенстве — меньший id
 
 
+@pytest.mark.parametrize("aspect_sign", [-1, 1])
+def test_examples_prefer_aspect_and_refill_opposite_whole_tone(aspect_sign):
+    acc = TechSentiment(n_examples=2, threshold=0.1)
+    whole_sign = -aspect_sign
+    _add(acc, 1, "Rust has a different tone from the rest.", whole_sign * 0.99, aspect_sign * 0.8)
+    _add(acc, 2, "Rust has a different tone here too.", whole_sign * 0.98, aspect_sign * 0.7)
+    _add(acc, 3, "An unrelated discussion.", whole_sign * 0.6, None)
+    _add(acc, 4, "Another unrelated discussion.", whole_sign * 0.5, None)
+
+    examples = acc.examples()
+    assert len({e["comment_id"] for e in examples}) == len(examples)
+    assert [(e["comment_id"], e["mentions"]) for e in examples if e["label"] == aspect_sign] == [
+        (1, True), (2, True)]
+    assert [(e["comment_id"], e["mentions"]) for e in examples if e["label"] == whole_sign] == [
+        (3, False), (4, False)]
+
+
 def test_no_examples_requested():
     acc = TechSentiment(n_examples=0, threshold=0.1)
     _add(acc, 1, "Rust is great", 0.8, 0.8)

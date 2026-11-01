@@ -98,7 +98,10 @@ class TechSentiment:
 
     def __post_init__(self):
         k = self.n_examples
-        self._examples = {(scope, sign): _TopK(k) for scope in ("aspect", "whole") for sign in (1, -1)}
+        # До k общих примеров могут совпасть с аспектными противоположного знака.
+        # Запас позволяет после удаления совпадений всё равно показать k других реплик.
+        self._examples = {(scope, sign): _TopK(k if scope == "aspect" else 2 * k)
+                          for scope in ("aspect", "whole") for sign in (1, -1)}
 
     def add(self, comment_id: int, parts: CommentParts, whole_score: float,
             aspect_score: float | None, pattern: Pattern | None) -> None:
@@ -127,12 +130,18 @@ class TechSentiment:
         """
         По каждому знаку — примеры из реплик с упоминанием технологии, а если таких нет —
         из комментариев целиком. mentions говорит фронтенду, о чём подпись: «о Rust» или «в обсуждениях».
+        Комментарий показывается один раз: аспектная оценка имеет приоритет, даже если общий тон противоположен.
         """
+        aspect = {sign: self._examples[("aspect", sign)].items() for sign in (1, -1)}
+        aspect_ids = {cid for items in aspect.values() for cid, _, _ in items}
         out = []
         for sign in (1, -1):
-            scope = "aspect" if self._examples[("aspect", sign)].items() else "whole"
+            mentions = bool(aspect[sign])
+            items = aspect[sign] if mentions else [
+                item for item in self._examples[("whole", sign)].items() if item[0] not in aspect_ids
+            ][:self.n_examples]
             out.extend(
-                {"comment_id": cid, "label": sign, "score": key * sign, "text": text, "mentions": scope == "aspect"}
-                for cid, key, text in self._examples[(scope, sign)].items()
+                {"comment_id": cid, "label": sign, "score": key * sign, "text": text, "mentions": mentions}
+                for cid, key, text in items
             )
         return out

@@ -149,6 +149,28 @@ def test_precompute_uses_all_comments_without_quotes_and_code(db_url, tmp_path):
     assert "wonderful" in words
 
 
+@pytest.mark.parametrize("text, aspect_label, fallback", [
+    ("Rust is terrible. Everything else is amazing, wonderful, excellent and lovely.", -1, "A lovely day."),
+    ("Rust is wonderful. Everything else is awful, horrible, terrible and disgusting.", 1, "An awful day."),
+])
+def test_precompute_examples_with_opposite_whole_and_aspect_tone(db_url, tmp_path, text, aspect_label, fallback):
+    items = [{"id": 1, "type": "story", "title": "Rust discussion", "descendants": 2,
+              "score": 5, "time": 1700000000},
+             {"id": 100, "type": "comment", "parent": 1, "text": text, "time": 1700000001},
+             {"id": 101, "type": "comment", "parent": 1, "text": fallback, "time": 1700000002}]
+    _ingest(db_url, tmp_path, items)
+
+    with session_scope(db_url) as session:
+        for _ in range(2):
+            counts = pc.precompute(session, lemmatize=False, threshold=0.1, n_examples=1)
+            rust_id = session.scalar(select(Tech.id).where(Tech.name == "rust"))
+            examples = session.scalars(select(SentimentExample).where(SentimentExample.tech_id == rust_id)).all()
+            assert counts["examples"] == 2
+            assert sorted((e.comment_id, e.label, e.mentions) for e in examples) == [
+                (100, aspect_label, True), (101, -aspect_label, False)]
+            assert _metrics(session)["rust"].sentiment_n == 2
+
+
 def test_stop_words_for():
     assert {"go", "golang", "goroutine"} <= pc.stop_words_for("go")
     assert "stable_diffusion" in pc.stop_words_for("stable_diffusion")
