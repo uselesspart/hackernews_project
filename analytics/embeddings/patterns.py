@@ -6,6 +6,12 @@ def _re(p: str) -> Pattern:
     return re.compile(p, re.IGNORECASE)
 
 
+def _contextual(word: str, context: str) -> Pattern:
+    """Ambiguous ecosystem names need nearby technical context in either direction."""
+    return _re(rf"(?:\b(?:{context})\b[^.!?\n]{{0,80}}\b(?:{word})\b|"
+               rf"\b(?:{word})\b[^.!?\n]{{0,80}}\b(?:{context})\b)")
+
+
 def compile_patterns(patterns: dict[str, list[Pattern]]) -> dict[str, Pattern]:
     """Один regex на технологию вместо списка: ~110 поисков на текст вместо ~420."""
     return {
@@ -16,7 +22,8 @@ def compile_patterns(patterns: dict[str, list[Pattern]]) -> dict[str, Pattern]:
 PATTERNS: dict[str, list[Pattern]] = {
     "python": [
         _re(r"\bpython\b"), _re(r"\bcpython\b"), _re(r"\bpypy\b"), _re(r"\bpytest\b"),
-        _re(r"\bpip3?\b"), _re(r"\bpoetry\b"), _re(r"\.py\b")
+        _re(r"\bpip3?\b"), _re(r"\bmypy\b"), _re(r"\.py\b"),
+        _contextual("poetry", "python|pip|pyproject|dependencies|packaging|package")
     ],
     "java": [
         _re(r"\bjava\b"), _re(r"\bjvm\b"), _re(r"\bjdk\b"), _re(r"\bjre\b"),
@@ -24,23 +31,25 @@ PATTERNS: dict[str, list[Pattern]] = {
     ],
     "javascript": [
         _re(r"\bjavascript\b"), _re(r"\bnode\.?js\b"), _re(r"\bdeno\b"),
-        _re(r"\bvue\.js\b"), _re(r"\bnext\.js\b"), _re(r"\bnpm\b"), _re(r"\byarn\b")
+        _re(r"\bvue\.js\b"), _re(r"\bnext\.js\b"), _re(r"\bnpm\b"), _re(r"\byarn\b"),
+        _re(r"\bnode\s+\d+\.\d+\b"), _re(r"\breact\s+(?:components?|hooks?|apps?|framework)\b")
     ],
     "typescript": [
         _re(r"\btypescript\b"), _re(r"\btsconfig\b"), _re(r"\bts-node\b"), _re(r"\.ts\b")
     ],
     "rust": [
         _re(r"\brust\b"), _re(r"\bcargo\s+(?:build|run|test|install|add|publish)\b"),
-        _re(r"\bcargo\.toml\b"), _re(r"\bcrates\.io\b"), _re(r"\.rs\b"),
-        _re(r"\bborrow\s+checker\b")
+        _re(r"\bcargo\.toml\b"), _re(r"\bcrates\.io\b"), _re(r"\.rs\b")
     ],
     "go": [
         _re(r"\bgolang\b"), _re(r"\bgoroutines?\b"), _re(r"\bgo\s+mod\b"),
         _re(r"\bgo\s+build\b"), _re(r"\bgo\s+1\.\d+\b"), _re(r"\.go\b"),
-        _re(r"\bpackage\s+main\b"), _re(r"\bfunc\s+main\b")
+        _re(r"\bpackage\s+main\b"), _re(r"\bfunc\s+main\b"),
+        _re(r"\bgo\s+(?:modules?|programming|language|compiler|runtime)\b")
     ],
     "ruby": [
-        _re(r"\bruby\b"), _re(r"\brails\b"), _re(r"\bbundler\b"), _re(r"\brubygems\b"),
+        _re(r"\bruby\b"), _re(r"\brails\b"), _re(r"\brubygems\b"),
+        _contextual("bundler", "ruby|gems?|rails|gemfile"),
         _re(r"\.rb\b")
     ],
     "php": [
@@ -66,7 +75,8 @@ PATTERNS: dict[str, list[Pattern]] = {
     ],
     "swift": [
         _re(r"\bswiftui\b"), _re(r"\.swift\b"), _re(r"\bxcode\b"),
-        _re(r"\bswift\s+(?:5|6|language)\b")
+        _re(r"\bswift\s+(?:5|6|language)\b"),
+        _contextual("swift", "programming|compiler|code|apple|ios|language|package")
     ],
     "scala": [
         _re(r"\bscala\b"), _re(r"\.scala\b"), _re(r"\bsbt\b"), _re(r"\backa\b")
@@ -109,7 +119,8 @@ PATTERNS: dict[str, list[Pattern]] = {
     ],
     "r": [
         _re(r"\bRStudio\b"), _re(r"\btidyverse\b"), _re(r"\bggplot2\b"), _re(r"\bCRAN\b"),
-        _re(r"\bdplyr\b"), _re(r"\bdata\.table\b"), _re(r"\bR\s+shiny\b"), _re(r"\.R\b")
+        _re(r"\bdplyr\b"), _re(r"\bdata\.table\b"), _re(r"\bR\s+shiny\b"), _re(r"\.R\b"),
+        _re(r"\bR\s+(?:programming|language|packages?|statistics)\b")
     ],
     "gpt": [
         _re(r"\bchatgpt\b"),
@@ -439,7 +450,8 @@ PATTERNS: dict[str, list[Pattern]] = {
         _re(r"\bfossil\s+(?:scm|vcs)\b"),
     ],
     "windows": [
-        _re(r"\bwindows\b"),
+        _re(r"(?<!graphical )(?<!broken )\b(?-i:Windows)\b(?!\s+(?:theory|and doors|of opportunity))"),
+        _contextual("windows", "microsoft|operating system|win32|winapi|powershell|drivers?|taskbar"),
         _re(r"\bwin(?:dows)?\s*(?:7|8\.1|10|11)\b"),
         _re(r"\bwindows\s*server\s*(?:2012|2016|2019|2022)\b"),
         _re(r"\bwsl2?\b"),
@@ -461,6 +473,7 @@ PATTERNS: dict[str, list[Pattern]] = {
         _re(r"\bchromebook\b"),
     ],
     "bsd": [
+        _re(r"\bbsd\b"),
         _re(r"\bfreebsd\b"),
         _re(r"\bopenbsd\b"),
         _re(r"\bnetbsd\b"),

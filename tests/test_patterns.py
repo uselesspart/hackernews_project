@@ -7,6 +7,30 @@ from analytics.embeddings.scripts.classify_tech import match_techs
 from utils.groups import categories
 
 
+@pytest.mark.parametrize('title, expected', [
+    ('Poetry and the art of writing', set()),
+    ('Python dependencies with Poetry', {'python'}),
+    ('Poetry package management', {'python'}),
+    ('A new JavaScript bundler', {'javascript'}),
+    ('Ruby gems with Bundler', {'ruby'}),
+    ('Graphical windows in a browser', set()),
+    ('Broken Windows Theory', set()),
+    ('Microsoft windows drivers', {'windows'}),
+    ('Windows Security tools', {'windows'}),
+    ('Borrow checker library for C++', {'cpp'}),
+    ('Mypy type checking', {'python'}),
+    ('Go Module Bloat', {'go'}),
+    ('Go to the moon', set()),
+    ('Node 0.4 support', {'javascript'}),
+    ('Efficient React components', {'javascript'}),
+    ('BSD networking', {'bsd'}),
+    ('Swift compiler improvements', {'swift'}),
+    ('Taylor Swift releases an album', set()),
+])
+def test_ambiguous_ecosystem_names_need_context(title, expected):
+    assert match_techs(title, PATTERNS) == expected
+
+
 @pytest.mark.parametrize("title, expected", [
     # Названия со спецсимволами
     ("Why C++ is still relevant", {"cpp"}),

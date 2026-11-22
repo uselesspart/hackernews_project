@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 
-from sqlalchemy import Boolean, Float, Integer, create_engine, event, inspect
+from sqlalchemy import Boolean, Float, Integer, String, create_engine, event, inspect
 from sqlalchemy.orm import sessionmaker
 
 from .models import Base
@@ -11,7 +11,8 @@ _ADDED_COLUMNS = {
     "story": [("dead", Boolean()), ("deleted", Boolean())],
     "comment": [("dead", Boolean()), ("deleted", Boolean())],
     "tech_metrics": [("aspect_n", Integer()), ("aspect_index", Float()), ("aspect_pos_share", Float()),
-                     ("aspect_neu_share", Float()), ("aspect_neg_share", Float())],
+                     ("aspect_neu_share", Float()), ("aspect_neg_share", Float()),
+                     ("irr_status", String(32)), ("irr_stories", Integer())],
     "sentiment_example": [("mentions", Boolean())],
 }
 

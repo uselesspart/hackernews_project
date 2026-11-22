@@ -2,11 +2,18 @@
 
 import argparse
 import csv
+import hashlib
 import json
 from pathlib import Path
 
 from analytics.embeddings.patterns import COMPILED_PATTERNS
 from utils.cli import cli_main
+
+
+def dictionary_version(path: Path | None = None) -> str:
+    # Git on Windows can convert LF/CRLF; the frozen rules must keep their version.
+    path = path or Path(__file__).resolve().parents[1] / 'patterns.py'
+    return hashlib.sha256(path.read_text(encoding='utf-8').encode('utf-8')).hexdigest()
 
 
 def read_labeled(path: str) -> list[dict]:
@@ -62,6 +69,8 @@ def parse_args():
     p = argparse.ArgumentParser(description="Precision/recall/F1 of the title technology dictionary")
     p.add_argument("-i", "--input", required=True)
     p.add_argument("-o", "--output", required=True, help="JSON with metrics and individual errors")
+    p.add_argument("--split", help="Only this sample_source (development/holdout)")
+    p.add_argument("--dictionary-sha256", help="Reject a changed dictionary after freezing its version")
     return p.parse_args()
 
 
@@ -69,7 +78,16 @@ def parse_args():
 def main() -> int:
     args = parse_args()
     rows = read_labeled(args.input)
+    version = dictionary_version()
+    if args.dictionary_sha256 and version != args.dictionary_sha256:
+        raise ValueError("Dictionary changed after its version was frozen")
+    if args.split:
+        rows = [r for r in rows if r.get('sample_source') == args.split]
+        if not rows:
+            raise ValueError("Requested split is empty")
     result = evaluate(rows)
+    result['dictionary_sha256'] = version
+    result['evaluation_split'] = args.split
     # Keep the technology-enriched sentiment sample separate from random controls.
     result["by_source"] = {source: evaluate([r for r in rows if r.get("sample_source") == source])
                            for source in sorted({r.get("sample_source", "") for r in rows})}

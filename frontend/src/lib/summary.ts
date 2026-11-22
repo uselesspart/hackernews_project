@@ -51,8 +51,8 @@ function compareShares(pos: number, neg: number, scope: string, unit: string): s
 
 export function irrSentence(irr: IrrBrief, name: string): string | null {
   if (!irr.reliable || irr.value == null) return null;
-  if (!irr.significant) return `Заметной связи упоминания ${name} с числом комментариев не видно.`;
+  if (!irr.significant) return `Убедительной связи упоминания ${name} с числом комментариев не обнаружено: 95 % интервал включает 1.`;
   return irr.value >= 1
-    ? `Статьи с ${name} в заголовке собирают ${timesLabel(irr.value)} больше комментариев, чем статьи без отслеживаемых технологий.`
-    : `Статьи с ${name} в заголовке собирают ${timesLabel(1 / irr.value)} меньше комментариев, чем статьи без отслеживаемых технологий.`;
+    ? `С упоминанием ${name} связано ${timesLabel(irr.value)} большее ожидаемое число комментариев при прочих равных признаках модели.`
+    : `С упоминанием ${name} связано ${timesLabel(1 / irr.value)} меньшее ожидаемое число комментариев при прочих равных признаках модели.`;
 }

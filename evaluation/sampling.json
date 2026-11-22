@@ -1,0 +1,29 @@
+{
+  "seed": 20261110,
+  "excluded_articles": 1017,
+  "title_count": 600,
+  "sentiment_count": 315,
+  "sentiment_articles": 241,
+  "selection": "Six technology strata; up to 40 explicit mentions + 20 nonmentions, fewer when available; own prose length 60..650 characters. Not representative of all HN comments.",
+  "annotation": "AI-reviewed: Codex, 2026-11-10; not human gold",
+  "dictionary_sha256": "1369025a43d9d3a61e607b94889d52de555e89e280092d4c4c7b96853bcdb347",
+  "frozen_dictionary_sha256": "46e35c64dab663760ff2357e11947e099b11ba43351512157625e8cfd9e400d0",
+  "freeze_protocol": "Dictionary edits based on previous known errors and development titles only; no edits after holdout review.",
+  "actual_per_tech": {
+    "linux": 60,
+    "gpt": 60,
+    "python": 48,
+    "rust": 51,
+    "javascript": 36,
+    "windows": 60
+  },
+  "sentiment_splits": {
+    "train": 157,
+    "test": 80,
+    "validation": 78
+  },
+  "human_validation": false,
+  "frozen_dictionary_snapshot_bytes_sha256": "46e35c64dab663760ff2357e11947e099b11ba43351512157625e8cfd9e400d0",
+  "dictionary_snapshot_bytes_sha256": "1369025a43d9d3a61e607b94889d52de555e89e280092d4c4c7b96853bcdb347",
+  "fingerprint_format": "SHA-256 of UTF-8 source with LF newlines; platform-independent. Original byte fingerprints retained separately."
+}

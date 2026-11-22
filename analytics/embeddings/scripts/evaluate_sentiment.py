@@ -6,7 +6,7 @@
 Каждый режим сравнивается с обеими разметками по macro-F1 (классы -1, 0, 1):
 - vader — весь комментарий (без цитат и кода), как общий тон в precompute;
 - vader_aspect — только предложения с упоминанием технологии, как аспектный тон в precompute;
-- vader_window — окно ±12 слов вокруг ключа (calculate_sentiment --mode vader --keyword);
+- vader_window — окно ±12 токенов вокруг словарного упоминания, с отказом при его отсутствии;
 - lexicon, lexicon_aspect, bootstrap — режимы calculate_sentiment; нужны модели Word2Vec.
 """
 import argparse
@@ -21,8 +21,9 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from analytics.embeddings.patterns import COMPILED_PATTERNS
 from analytics.embeddings.scripts import calculate_sentiment as cs
+from analytics.embeddings.w2v_quality import quality_report
 from analytics.evaluation import split_articles
-from analytics.sentiment import mention_text, split_comment
+from analytics.sentiment import mention_text, mention_window_score, split_comment
 from utils.cli import cli_main
 
 DEFAULT_THRESHOLDS = (0.05, 0.1, 0.12, 0.2, 0.3, 0.4, 0.5)
@@ -53,7 +54,8 @@ def vader_scores(rows: list[dict]) -> dict[str, np.ndarray]:
     return {
         "vader": np.array([vader.polarity_scores(split_comment(r["text"]).prose)["compound"] for r in rows]),
         "vader_aspect": np.array([aspect(r) for r in rows]),
-        "vader_window": np.array([cs.vader_aspect_score(r["text"], r["tech"], vader) for r in rows]),
+        "vader_window": np.array([mention_window_score(split_comment(r["text"]),
+                                                      COMPILED_PATTERNS.get(r["tech"]), vader) for r in rows]),
     }
 
 
@@ -193,6 +195,16 @@ def main() -> int:
         raise ValueError("В файле нет ни одной заполненной метки label_comment или label_tech")
 
     splits = split_articles(rows, args.seed) if not args.exploratory else ["exploratory"] * len(rows)
+    if not args.exploratory and any(r.get('split') for r in rows):
+        splits = [r.get('split') for r in rows]
+        if set(splits) != {'train', 'validation', 'test'}:
+            raise ValueError("Explicit split must contain train, validation and test, without blanks")
+        groups = {}
+        for row, split in zip(rows, splits):
+            group = row.get('story_id') or row.get('comment_id')
+            if group in groups and groups[group] != split:
+                raise ValueError("An article appears in multiple explicit splits")
+            groups[group] = split
     training_rows = rows if args.exploratory else [r for r, split in zip(rows, splits) if split == "train"]
     if args.training_input:
         with open(args.training_input, encoding="utf-8-sig", newline="") as f:
@@ -210,11 +222,15 @@ def main() -> int:
         comments_kv = Word2Vec.load(args.comments_model).wv
         scores.update(lexicon_scores(rows, comments_kv))
         if args.titles_model:
-            pred = bootstrap_labels(rows, Word2Vec.load(args.titles_model).wv, comments_kv, training_rows)
-            if pred is not None:
-                labels["bootstrap"] = pred
+            titles_kv = Word2Vec.load(args.titles_model).wv
+            if any(quality_report(kv, list(COMPILED_PATTERNS))['degenerate'] for kv in (titles_kv, comments_kv)):
+                skipped.append("bootstrap: degenerate embedding model")
             else:
-                skipped.append("bootstrap: fewer than 50 confident training rows or fewer than two classes")
+                pred = bootstrap_labels(rows, titles_kv, comments_kv, training_rows)
+                if pred is not None:
+                    labels["bootstrap"] = pred
+                else:
+                    skipped.append("bootstrap: fewer than 50 confident training rows or fewer than two classes")
 
     results = (evaluate(rows, scores, labels) if args.exploratory else
                evaluate_holdout(rows, scores, labels, splits))
@@ -234,6 +250,7 @@ def main() -> int:
         print(f"\nТаблица сохранена в {args.out_csv}")
     if args.out_json:
         report = {"protocol": "exploratory" if args.exploratory else "article_holdout_50_25_25",
+                  "aspect_window_protocol": "dictionary_matches_abstain_v1",
                   "seed": args.seed, "grouping": "story_id" if all(r.get("story_id") for r in rows) else "mixed",
                   "annotation_sources": sorted({r.get("annotation_source") or "unspecified" for r in rows}),
                   "splits": {s: {"rows": splits.count(s),

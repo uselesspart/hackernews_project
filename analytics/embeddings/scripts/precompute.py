@@ -58,14 +58,15 @@ def story_stats(session: Session) -> dict[int, dict]:
 
 
 def comment_profiles(session: Session, keys: list[str], *, threshold: float, n_examples: int,
-                     lemmatize: bool) -> tuple[dict[str, TechSentiment], dict[str, Counter]]:
+                     lemmatize: bool, aspect_threshold: float | None = None
+                     ) -> tuple[dict[str, TechSentiment], dict[str, Counter]]:
     """
     Тональность (весь комментарий и предложения с упоминанием технологии) и частые слова
     по всем комментариям веток. Цитаты и код не входят ни в оценку, ни в слова.
     """
     story_keys = story_tech_keys(session)
     vader = SentimentIntensityAnalyzer()
-    sentiments = {key: TechSentiment(n_examples, threshold) for key in keys}
+    sentiments = {key: TechSentiment(n_examples, threshold, aspect_threshold=aspect_threshold) for key in keys}
     words = {key: Counter() for key in keys}
     stops = {key: stop_words_for(key) for key in keys}
 
@@ -132,28 +133,42 @@ def _finite(value) -> float | None:
     return value if isfinite(value) else None
 
 
-def irr_by_tech(session: Session, w2v: Word2Vec, family: str) -> dict[str, dict]:
+def irr_by_tech(session: Session, w2v: Word2Vec | None = None, family: str = "negbin",
+                min_stories: int = 30) -> dict[str, dict]:
     """IRR по всем живым статьям (базовая категория — статьи без отслеживаемых технологий)."""
     rows = session.execute(
         select(Story.title, Story.descendants, Story.url)
         .where(is_alive(Story), Story.title.isnot(None), Story.descendants.isnot(None), Story.descendants >= 0)
     ).all()
     df = pd.DataFrame(rows, columns=["title", "descendants", "url"])
+    # Same title detector and population as the fitted model; no embeddings required.
+    from analytics.embeddings.scripts.calculate_irr import extract_tech_regex
+    frequencies = Counter(t for title in df.title for t in extract_tech_regex(title))
+    output = {key: {"irr_status": "insufficient_data" if frequencies[key] < min_stories else "not_estimable",
+                    "irr_stories": frequencies[key]}
+              for key in set(session.scalars(select(Tech.name))) | frequencies.keys()}
+    if not any(n >= min_stories for n in frequencies.values()):
+        return output
     try:
         # Все технологии не реже MIN_FREQ статей, а не топ-50: API нужен IRR для каждой
-        coefs = compute_irr(df, w2v, family=family, top_n=None)
+        coefs = compute_irr(df, w2v, family=family, top_n=None, interactions=False, min_freq=min_stories)
+        if not coefs.attrs.get("diagnostics", {}).get("converged", False):
+            raise ValueError("IRR model did not converge")
     except Exception as e:  # мало данных, вырожденная модель — остальной предрасчёт от этого не зависит
         print(f"IRR пропущен: {e!r}")
-        return {}
+        for row in output.values():
+            if row["irr_status"] != "insufficient_data":
+                row["irr_status"] = "model_failed"
+        return output
     coefs = coefs.set_index("feature")
-    return {
-        feature.removeprefix("has_"): {
-            "irr": _finite(row.IRR), "irr_low": _finite(row.IRR_low), "irr_high": _finite(row.IRR_high),
-            "irr_pval": _finite(row.pval),
-        }
-        for feature, row in coefs.iterrows()
-        if feature.startswith("has_") and not feature.startswith("has_pair_")
-    }
+    for feature, row in coefs.iterrows():
+        key = feature.removeprefix("has_")
+        if not feature.startswith("has_") or key not in output:
+            continue
+        value, low, high, pval = map(_finite, (row.IRR, row.IRR_low, row.IRR_high, row.pval))
+        if (None not in (value, low, high, pval) and 0 < low <= value <= high and 0 <= pval <= 1):
+            output[key].update(irr=value, irr_low=low, irr_high=high, irr_pval=pval, irr_status="available")
+    return output
 
 
 def sentiment_columns(s: TechSentiment) -> dict:
@@ -168,7 +183,13 @@ def sentiment_columns(s: TechSentiment) -> dict:
 
 def precompute(session: Session, *, context_model: str | None = None, titles_model: str | None = None,
                n_words: int = 100, n_neighbors: int = 10, n_examples: int = 3, threshold: float = 0.12,
-               lemmatize: bool = True, family: str = "negbin", allow_degenerate: bool = False) -> dict[str, int]:
+               lemmatize: bool = True, family: str = "negbin", allow_degenerate: bool = False,
+               skip_irr: bool = False, min_irr_stories: int = 30,
+               aspect_threshold: float | None = None) -> dict[str, int]:
+    if min_irr_stories < 1 or not 0 <= threshold <= 1:
+        raise ValueError("Positive minimum story count and a sentiment threshold between 0 and 1 required")
+    if aspect_threshold is not None and not 0 <= aspect_threshold <= 1:
+        raise ValueError("Aspect threshold must be between 0 and 1")
     techs = {name: tech_id for tech_id, name in session.execute(select(Tech.id, Tech.name))}
     stats = story_stats(session)
     now = datetime.now(UTC)
@@ -186,18 +207,24 @@ def precompute(session: Session, *, context_model: str | None = None, titles_mod
         else:
             neighbors, coords = neighbors_and_map(kv, list(techs), n_neighbors)
     irr = {}
-    if titles_model:
+    if not skip_irr:
         print("IRR по всем статьям...")
-        irr = irr_by_tech(session, Word2Vec.load(titles_model), family)
+        model = Word2Vec.load(titles_model) if titles_model else None
+        if model is not None and quality_report(model.wv, list(techs))["degenerate"]:
+            print("Вырожденная модель заголовков: IRR считается без эмбеддингов")
+            model = None
+        irr = irr_by_tech(session, model, family, min_irr_stories)
 
     print("Тональность и слова по всем комментариям...")
     with_stories = [key for key, tech_id in techs.items() if stats.get(tech_id, {}).get("stories")]
     sentiments, tech_words = comment_profiles(session, with_stories, threshold=threshold,
-                                              n_examples=n_examples, lemmatize=lemmatize)
+                                              n_examples=n_examples, lemmatize=lemmatize,
+                                              aspect_threshold=aspect_threshold)
 
     metrics, words, examples = [], [], []
     for key, tech_id in techs.items():
-        row = {"tech_id": tech_id, "computed_at": now, "stories": 0, "comments": 0, "sentiment_n": 0, "aspect_n": 0}
+        row = {"tech_id": tech_id, "computed_at": now, "stories": 0, "comments": 0,
+               "sentiment_n": 0, "aspect_n": 0, "irr_status": "not_computed", "irr_stories": 0}
         row.update(stats.get(tech_id, {}))
         row.update(irr.get(key, {}))
         if key in coords:
@@ -235,7 +262,10 @@ def parse_args():
     )
     p.add_argument("-d", "--db", required=True, help="DB URL (например, sqlite:///hn.db)")
     p.add_argument("--context-model", help="Модель Word2Vec контекста (.model): соседи и карта. Без неё — пропускаются")
-    p.add_argument("--titles-model", help="Модель Word2Vec заголовков (.model): IRR. Без неё — пропускается")
+    p.add_argument("--titles-model", help="Необязательная модель заголовков: контроли сходства для IRR")
+    p.add_argument("--skip-irr", action="store_true", help="Пропустить расчёт IRR")
+    p.add_argument("--min-irr-stories", type=int, default=30, help="Минимум статей на технологию для IRR")
+    p.add_argument("--aspect-threshold", type=float, help="Отдельный порог аспектного тона")
     p.add_argument("--top-words", type=int, default=100, help="Сколько частых слов хранить (по умолчанию 100)")
     p.add_argument("--neighbors", type=int, default=10, help="Сколько соседей хранить (по умолчанию 10)")
     p.add_argument("--examples", type=int, default=3,
@@ -257,6 +287,7 @@ def main() -> int:
             n_words=args.top_words, n_neighbors=args.neighbors, n_examples=args.examples,
             threshold=args.threshold, lemmatize=not args.no_lemmatize, family=args.family,
             allow_degenerate=args.allow_degenerate_model,
+            skip_irr=args.skip_irr, min_irr_stories=args.min_irr_stories, aspect_threshold=args.aspect_threshold,
         )
     print(f"Готово: технологий {counts['techs']}, соседей {counts['neighbors']}, "
           f"слов {counts['words']}, примеров {counts['examples']}")

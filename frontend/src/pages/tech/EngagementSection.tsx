@@ -12,7 +12,7 @@ export function EngagementSection({ profile }: { profile: TechProfile }) {
     <Section
       id="engagement"
       title="Вовлечённость"
-      lead="Во сколько раз больше или меньше комментариев собирают статьи с технологией в заголовке — по сравнению со статьями без отслеживаемых технологий."
+      lead="Как упоминание технологии в заголовке связано с ожидаемым числом комментариев с учётом других технологий и формата статьи. Связь не означает причину."
     >
       {sentence && irr.value != null ? (
         <div className={styles.irr}>
@@ -26,13 +26,16 @@ export function EngagementSection({ profile }: { profile: TechProfile }) {
           </p>
           <p className={styles.irrText}>{sentence}</p>
         </div>
-      ) : irr.value == null ? (
-        <Note>Для {name} оценки нет: технология слишком редко встречается в заголовках, чтобы включить её в модель.</Note>
-      ) : (
+      ) : irr.status === "insufficient_data" || (irr.value != null && !irr.status) ? (
         <Note tone="lowdata">
-          Мало статей для оценки: {countLabel(stats.stories, STORIES)}. На такой выборке модель даёт слишком широкий
-          интервал, поэтому значение не показываем.
+          Мало статей для оценки: {countLabel(irr.n ?? stats.stories, STORIES)}. Значение не показываем.
         </Note>
+      ) : irr.status === "model_failed" ? (
+        <Note>Оценка вовлечённости временно недоступна: модель не прошла проверку. Число статей: {irr.n ?? stats.stories}.</Note>
+      ) : irr.status === "not_estimable" ? (
+        <Note>Для {name} не удалось получить корректную отдельную оценку. Число статей: {irr.n ?? stats.stories}.</Note>
+      ) : (
+        <Note>Оценка вовлечённости ещё не рассчитана.</Note>
       )}
     </Section>
   );

@@ -69,12 +69,13 @@ describe("buildLead", () => {
   });
 
   it("IRR: больше, меньше, незначимо", () => {
-    const base = { low: 1.2, high: 2.6, pval: 0.01, reliable: true, significant: true };
+    const base = { low: 1.2, high: 2.6, pval: 0.01, reliable: true, significant: true,
+      status: "available" as const, n: 100 };
     expect(irrSentence({ ...base, value: 1.84 }, "Rust")).toBe(
-      "Статьи с Rust в заголовке собирают в 1,8 раза больше комментариев, чем статьи без отслеживаемых технологий.",
+      "С упоминанием Rust связано в 1,8 раза большее ожидаемое число комментариев при прочих равных признаках модели.",
     );
-    expect(irrSentence({ ...base, value: 0.5 }, "Rust")).toContain("в 2 раза меньше");
-    expect(irrSentence({ ...base, value: 1.1, significant: false }, "Rust")).toContain("Заметной связи");
+    expect(irrSentence({ ...base, value: 0.5 }, "Rust")).toContain("в 2 раза меньшее");
+    expect(irrSentence({ ...base, value: 1.1, significant: false }, "Rust")).toContain("интервал включает 1");
     expect(irrSentence({ ...base, value: 1.84, reliable: false }, "Rust")).toBeNull();
   });
 });

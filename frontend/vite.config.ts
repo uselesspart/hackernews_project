@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 const apiTarget = process.env.HN_API_URL ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
+  cacheDir: ".vite",
   plugins: [react()],
   server: {
     host: "127.0.0.1",

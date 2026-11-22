@@ -38,7 +38,13 @@ def test_missing_aspect_abstains_and_whole_removes_quotes():
     scores = es.vader_scores(rows)
     assert scores['vader'][0] > 0
     assert np.isnan(scores['vader_aspect'][0])
+    assert np.isnan(scores['vader_window'][0])
     assert es.to_labels(scores['vader_aspect'], 0.12).tolist() == [2]
+
+
+def test_window_scores_catalog_alias_without_falling_back_to_unrelated_whole_text():
+    rows = [{'tech': 'gpt', 'text': 'ChatGPT is wonderful.'}]
+    assert es.vader_scores(rows)['vader_window'][0] > .5
 
 
 def test_selection_uses_validation_not_test_labels():
@@ -92,6 +98,16 @@ def test_unreviewed_or_invalid_technology_gold_is_rejected(tmp_path, gold):
     path = _csv(tmp_path / 'labels.csv', [{"story_id": '1', "title": 'Python', "gold_techs": gold}])
     with pytest.raises(ValueError):
         et.read_labeled(path)
+
+
+def test_dictionary_version_is_portable_between_windows_and_unix(tmp_path):
+    path = tmp_path / 'patterns.py'
+    path.write_bytes(b'first\nsecond\n')
+    original = et.dictionary_version(path)
+    path.write_bytes(b'first\r\nsecond\r\n')
+    assert et.dictionary_version(path) == original
+    path.write_bytes(b'changed\nsecond\n')
+    assert et.dictionary_version(path) != original
 
 
 def test_tech_cli_scores_reviewed_empty_titles(run_cli, tmp_path):

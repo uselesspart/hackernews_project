@@ -2,7 +2,7 @@ import argparse
 import re
 from collections.abc import Iterable
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
 
 from analytics.embeddings.patterns import COMPILED_PATTERNS, PATTERNS, compile_patterns
@@ -40,6 +40,7 @@ def classify_stories(session: Session,
                      dry_run: bool = False) -> int:
     tech_id_by_name = {name: t.id for name, t in ensure_techs(session, patterns.keys()).items()}
     compiled = _compiled(patterns)
+    managed_ids = {tech_id_by_name[key] for key in patterns}
 
     existing: dict[int, set[int]] = {}
     for story_id, tech_id in session.execute(select(story_tech.c.story_id, story_tech.c.tech_id)):
@@ -57,24 +58,28 @@ def classify_stories(session: Session,
             break
         last_id = rows[-1].id
 
-        links = []
+        links, removed = [], False
         for story_id, title in rows:
-            if not title:
-                continue
             have = existing.get(story_id, set())
-            new_ids = [tech_id_by_name[tech] for tech, pat in compiled.items()
-                       if pat.search(title) and tech_id_by_name[tech] not in have]
-            if not new_ids:
+            desired = {tech_id_by_name[tech] for tech, pat in compiled.items() if title and pat.search(title)}
+            new_ids = sorted(desired - have)
+            stale = (have & managed_ids) - desired
+            if not new_ids and not stale:
                 continue
             updated += 1
             if dry_run:
                 names = [name for name, tid in tech_id_by_name.items() if tid in new_ids]
-                print(f"Story {story_id}: +{names}")
+                print(f"Story {story_id}: +{names}, removed links: {len(stale)}")
                 continue
+            if stale:
+                session.execute(delete(story_tech).where(story_tech.c.story_id == story_id,
+                                                        story_tech.c.tech_id.in_(stale)))
+                removed = True
             links.extend({"story_id": story_id, "tech_id": tid} for tid in new_ids)
 
         if links:
             session.execute(insert(story_tech), links)
+        if links or removed:
             session.commit()
 
     return updated

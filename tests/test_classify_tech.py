@@ -51,3 +51,18 @@ def test_classify_stories_dry_run_writes_nothing(ingested_db):
 def test_classify_cli(run_cli, ingested_db, capsys):
     assert run_cli(classify_tech.main, "-d", ingested_db) == 0
     assert "Обновлено историй: 3" in capsys.readouterr().out
+
+
+def test_reclassification_removes_old_matches_and_keeps_dry_run_read_only(db_url):
+    with session_scope(db_url) as session:
+        python = Tech(name='python')
+        story = Story(id=1, title='Poetry and literature', techs=[python])
+        session.add(story)
+        session.commit()
+        assert classify_stories(session, dry_run=True) == 1
+        session.expire_all()
+        assert _links(session)[1] == ['python']
+        assert classify_stories(session) == 1
+        session.expire_all()
+        assert _links(session)[1] == []
+        assert classify_stories(session) == 0

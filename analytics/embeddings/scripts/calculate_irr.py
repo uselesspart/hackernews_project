@@ -209,16 +209,17 @@ def to_groups(tech_lists: pd.Series, w2v: Word2Vec):
 
 
 def top_labels(tech_lists: pd.Series,
-               top_n: int | None = TOP_N) -> tuple[pd.Series, list[str], list[tuple[str, str]]]:
+               top_n: int | None = TOP_N, min_freq: int = MIN_FREQ
+               ) -> tuple[pd.Series, list[str], list[tuple[str, str]]]:
     """Технологии не реже MIN_FREQ (не больше top_n; None — все) и частые пары."""
     labels = [t for xs in tech_lists for t in xs]
     if not labels:
         raise ValueError("Не удалось извлечь ни одной технологии/группы из заголовков.")
     freq = pd.Series(labels).value_counts()  # равные частоты — в порядке первого появления
-    top_tech = freq[freq >= MIN_FREQ].index.tolist()[:top_n]
+    top_tech = freq[freq >= min_freq].index.tolist()[:top_n]
     pair_freq = Counter(pair for xs in tech_lists for pair in combinations(sorted(xs), 2))
     top_pairs = [p for p, c in pd.Series(dict(pair_freq), dtype=int).sort_values(ascending=False).items()
-                 if c >= MIN_FREQ][:TOP_N]
+                 if c >= min_freq][:TOP_N]
     return freq, top_tech, top_pairs
 
 
@@ -283,7 +284,7 @@ def irr_table(result) -> pd.DataFrame:
 def parse_args():
     p = argparse.ArgumentParser(
         prog="calculate_irr",
-        description="IRR технологий: во сколько раз упоминание технологии меняет ожидаемое число комментариев"
+        description="IRR технологий: связь упоминания с ожидаемым числом комментариев при прочих равных"
     )
     p.add_argument("-m", "--model", help="Модель Word2Vec (.model); без неё — только индикаторы и контроли")
     p.add_argument("-i", "--input", required=True, help="CSV с метаданными статей (export_stories_meta)")
@@ -305,17 +306,23 @@ def parse_args():
     p.add_argument("--no-interactions", action="store_true",
                    help="Без пар технологий: начальная модель главных эффектов")
     p.add_argument("--diagnostics-json", help="Сохранить объём, дисперсию, alpha, сходимость и признаки в JSON")
+    p.add_argument("--min-frequency", type=int, default=MIN_FREQ, help="Минимум статей на технологию")
     return p.parse_args()
 
 
 def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "negbin", groups: bool = False,
                 top_n: int | None = TOP_N, controls: bool = True, max_vif: float | None = MAX_VIF,
-                interactions: bool = True) -> pd.DataFrame:
+                interactions: bool = True, min_freq: int = MIN_FREQ) -> pd.DataFrame:
     """
     Таблица IRR по DataFrame с колонками title, descendants и (необязательно) url; индекс — позиционный.
     Базовая категория — статьи без технологий из топа, поэтому на вход нужны все статьи,
     а не только статьи с технологиями.
     """
+    if min_freq < 1:
+        raise ValueError("min_freq must be positive")
+    df = df.reset_index(drop=True)
+    if df.empty or not np.isfinite(df['descendants']).all() or (df['descendants'] < 0).any():
+        raise ValueError("Expected nonempty data with finite nonnegative comment counts")
     print("Извлечение технологий из заголовков...")
     tech_lists = df['title'].apply(extract_tech_regex)
     if groups:
@@ -323,7 +330,7 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "ne
             raise ValueError("Для --groups нужна --model")
         tech_lists, vec_map = to_groups(tech_lists, w2v)
 
-    freq, top_tech, top_pairs = top_labels(tech_lists, top_n)
+    freq, top_tech, top_pairs = top_labels(tech_lists, top_n, min_freq)
     if not interactions:
         top_pairs = []
     print(f"В модели: {len(top_tech)} {'групп' if groups else 'технологий'}, {len(top_pairs)} пар")
@@ -358,7 +365,7 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "ne
         'mean_comments': float(y.mean()), 'variance_comments': float(y.var()), 'alpha': alpha,
         'converged': bool(result.converged), 'deviance': float(result.deviance),
         'features': list(result.params.index), 'tech_frequencies': {str(t): int(n) for t, n in freq.items()},
-        'controls': controls, 'interactions': interactions, 'embeddings': w2v is not None,
+        'controls': controls, 'interactions': interactions, 'embeddings': w2v is not None, 'min_frequency': min_freq,
         'interpretation': 'Adjusted observational associations, not causal effects; 95% Wald intervals are conditional '
                           'on the estimated dispersion and feature selection.'}
     return table
@@ -371,7 +378,7 @@ def main() -> int:
     model = Word2Vec.load(args.model) if args.model else None
     coef_df = compute_irr(df, model, args.family, args.groups, top_n=args.top_n or None,
                           controls=not args.no_controls, max_vif=args.max_vif or None,
-                          interactions=not args.no_interactions)
+                          interactions=not args.no_interactions, min_freq=args.min_frequency)
     coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
     if args.diagnostics_json:
         with open(args.diagnostics_json, 'w', encoding='utf-8') as f:

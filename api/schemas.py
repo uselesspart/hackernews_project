@@ -43,6 +43,8 @@ class IrrBrief(BaseModel):
     pval: float | None
     reliable: bool
     significant: bool = Field(description="95% интервал не включает 1")
+    status: Literal["available", "insufficient_data", "not_estimable", "model_failed", "not_computed"] = "not_computed"
+    n: int = Field(default=0, description="Число статей с технологией в выборке регрессии")
 
 
 class TechListItem(TechRef):

@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from math import isfinite
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -61,13 +62,20 @@ def _aspect(m: TechMetrics | None, settings: Settings) -> SentimentShares:
 
 
 def _irr_brief(m: TechMetrics | None, stories: int, settings: Settings) -> IrrBrief:
-    if m is None or m.irr is None:
-        return IrrBrief(value=None, low=None, high=None, pval=None, reliable=False, significant=False)
-    has_ci = m.irr_low is not None and m.irr_high is not None
-    significant = has_ci and (m.irr_low > 1 or m.irr_high < 1)
-    # Без конечного интервала оценка не измерение: precompute пишет вместо inf null
-    return IrrBrief(value=m.irr, low=m.irr_low, high=m.irr_high, pval=m.irr_pval,
-                    reliable=stories >= settings.min_irr_stories and has_ci, significant=significant)
+    n = m.irr_stories if m and m.irr_stories is not None else stories
+    status = m.irr_status if m and m.irr_status else "not_computed"
+    values = (m.irr, m.irr_low, m.irr_high, m.irr_pval) if m else (None,) * 4
+    value, low, high, pval = [v if v is not None and isfinite(v) else None for v in values]
+    valid = (None not in (value, low, high, pval) and 0 < low <= value <= high and 0 <= pval <= 1)
+    if status == "not_computed" and value is not None:  # existing precompute before status migration
+        status = "available" if valid else "not_estimable"
+    if n < settings.min_irr_stories:
+        status = "insufficient_data"
+    elif status == "available" and not valid:
+        status = "not_estimable"
+    reliable = status == "available" and valid
+    return IrrBrief(value=value, low=low, high=high, pval=pval, n=n, status=status,
+                    reliable=reliable, significant=reliable and (low > 1 or high < 1))
 
 
 def _resolve(session: Session, key: str):

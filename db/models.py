@@ -105,6 +105,8 @@ class TechMetrics(Base):
     irr_low: Mapped[float | None] = mapped_column(Float)
     irr_high: Mapped[float | None] = mapped_column(Float)
     irr_pval: Mapped[float | None] = mapped_column(Float)
+    irr_status: Mapped[str | None] = mapped_column(String(32))
+    irr_stories: Mapped[int | None] = mapped_column(Integer)
 
     map_x: Mapped[float | None] = mapped_column(Float)
     map_y: Mapped[float | None] = mapped_column(Float)

@@ -214,6 +214,18 @@ export interface components {
              * @description 95% интервал не включает 1
              */
             significant: boolean;
+            /**
+             * Status
+             * @default not_computed
+             * @enum {string}
+             */
+            status: "available" | "insufficient_data" | "not_estimable" | "model_failed" | "not_computed";
+            /**
+             * N
+             * @description Число статей с технологией в выборке регрессии
+             * @default 0
+             */
+            n: number;
         };
         /** MapPoint */
         MapPoint: {

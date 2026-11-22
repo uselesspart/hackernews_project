@@ -8,6 +8,7 @@
 """
 import heapq
 import re
+from bisect import bisect_right
 from dataclasses import dataclass, field
 from re import Pattern
 
@@ -55,6 +56,22 @@ def mention_text(parts: CommentParts, pattern: Pattern) -> str | None:
     return " ".join(found) if found else None
 
 
+def mention_window_score(parts: CommentParts, pattern: Pattern | None, vader, window: int = 12) -> float:
+    """VADER near actual dictionary matches, including aliases; absent target means abstention."""
+    if pattern is None:
+        return float('nan')
+    text = parts.prose
+    tokens = list(re.finditer(r'\S+', text))
+    ends = [token.end() for token in tokens]
+    scores = []
+    for match in pattern.finditer(text):
+        left = max(0, bisect_right(ends, match.start()) - window)
+        right = min(len(tokens) - 1, bisect_right(ends, match.end() - 1) + window)
+        if tokens:
+            scores.append(vader.polarity_scores(text[tokens[left].start():tokens[right].end()])['compound'])
+    return sum(scores) / len(scores) if scores else float('nan')
+
+
 def excerpt(text: str, pattern: Pattern | None = None, max_chars: int = EXAMPLE_MAX_CHARS) -> str:
     """
     Не длиннее max_chars. Если упоминание технологии не попадает в начало, выдержка начинается
@@ -95,6 +112,7 @@ class TechSentiment:
     threshold: float
     whole: list[float] = field(default_factory=list)
     aspect: list[float] = field(default_factory=list)
+    aspect_threshold: float | None = None
 
     def __post_init__(self):
         k = self.n_examples
@@ -114,7 +132,9 @@ class TechSentiment:
         for scope, score in (("whole", whole_score), ("aspect", aspect_score)):
             if score is None:
                 continue
-            sign = label_from_score(score, self.threshold)
+            threshold = (self.aspect_threshold
+                         if scope == "aspect" and self.aspect_threshold is not None else self.threshold)
+            sign = label_from_score(score, threshold)
             if sign:
                 text = excerpt(parts.prose, pattern if scope == "aspect" else None)
                 self._examples[(scope, sign)].push(score * sign, comment_id, text)
@@ -123,8 +143,9 @@ class TechSentiment:
         scores = self.whole if scope == "whole" else self.aspect
         if not scores:
             return None
-        rows = [(i, label_from_score(s, self.threshold), s, "") for i, s in enumerate(scores)]
-        return compute_corpus_summary(rows, mode="vader", thr=self.threshold)
+        threshold = self.aspect_threshold if scope == "aspect" and self.aspect_threshold is not None else self.threshold
+        rows = [(i, label_from_score(s, threshold), s, "") for i, s in enumerate(scores)]
+        return compute_corpus_summary(rows, mode="vader", thr=threshold)
 
     def examples(self) -> list[dict]:
         """
