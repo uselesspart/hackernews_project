@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from analytics.embeddings.patterns import COMPILED_PATTERNS
 from analytics.embeddings.scripts.evaluate_tech import dictionary_version
+from analytics.evaluation import split_articles
 from analytics.sentiment import mention_text, split_comment
 from db import session_scope
 from db.models import Story
@@ -37,7 +38,10 @@ def main():
     p.add_argument('--mention-count', type=int, default=40)
     p.add_argument('--nonmention-count', type=int, default=20)
     p.add_argument('--max-chars', type=int, default=650)
+    p.add_argument('--min-chars', type=int, default=60)
     args = p.parse_args()
+    if not 0 <= args.min_chars <= args.max_chars:
+        raise ValueError('Expected 0 <= min-chars <= max-chars')
     rng = Random(args.seed)
     excluded = set()
     for path in args.exclude:
@@ -58,7 +62,7 @@ def main():
             if sid in forbidden:
                 continue
             parts = split_comment(raw)
-            if not 60 <= len(parts.prose) <= args.max_chars:
+            if not args.min_chars <= len(parts.prose) <= args.max_chars:
                 continue
             for key in set(keys).intersection(story_keys.get(sid, ())):
                 mentions = mention_text(parts, COMPILED_PATTERNS[key]) is not None
@@ -76,15 +80,18 @@ def main():
                                      text=text, label_comment='', label_tech='', annotation_source='',
                                      annotation_notes=''))
     out = Path(args.output_dir)
+    splits = split_articles(rows, seed=args.seed) if rows else []
+    for row, split in zip(rows, splits, strict=True):
+        row['split'] = split
     write_csv(out / 'dictionary.csv', title_rows, TITLE_FIELDS)
-    write_csv(out / 'sentiment.csv', rows, SENTIMENT_FIELDS)
+    write_csv(out / 'sentiment.csv', rows, [*SENTIMENT_FIELDS, 'split'])
     manifest = dict(seed=args.seed, excluded_articles=len(excluded), title_count=len(title_rows),
                     sentiment_count=len(rows), sentiment_articles=len({r['story_id'] for r in rows}),
                     requested_per_tech=dict(mentions=args.mention_count, nonmentions=args.nonmention_count),
                     actual_per_tech={key: sum(r['tech'] == key for r in rows) for key in keys},
                     selection=f'Six technology strata; up to the requested counts if available; '
-                              f'prose length 60..{args.max_chars} characters, not representative of all comments.',
-                    annotation='Blank export for independent AI review; never copy classifier predictions.',
+                              f'prose length {args.min_chars}..{args.max_chars} characters; not representative.',
+                    annotation='Blank export for independent review; never copy classifier predictions.',
                     dictionary_sha256=dictionary_version())
     (out / 'sampling.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print(json.dumps(manifest, indent=2))

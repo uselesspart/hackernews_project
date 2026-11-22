@@ -14,6 +14,7 @@ export type IrrBrief = S["IrrBrief"];
 export type StoriesPage = S["StoriesPage"];
 export type StoryOut = S["StoryOut"];
 export type Timeline = S["Timeline"];
+export type Forecast = S["Forecast"];
 
 export type StorySort = "score" | "comments" | "time";
 export type TechSort = "stories" | "comments" | "sentiment" | "irr" | "name";

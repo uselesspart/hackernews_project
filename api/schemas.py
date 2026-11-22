@@ -41,6 +41,8 @@ class IrrBrief(BaseModel):
     low: float | None
     high: float | None
     pval: float | None
+    qval: float | None = Field(default=None, description="BH-adjusted p-value across fitted technology coefficients")
+    significant_adjusted: bool | None = Field(default=None, description="BH FDR below 0.05; null if not computed")
     reliable: bool
     significant: bool = Field(description="95% интервал не включает 1")
     status: Literal["available", "insufficient_data", "not_estimable", "model_failed", "not_computed"] = "not_computed"
@@ -154,3 +156,20 @@ class Timeline(BaseModel):
     bucket: Literal["day", "week", "month"]
     span_days: float = Field(description="Охват выборки в днях: по нему фронтенд решает, показывать ли динамику")
     points: list[TimelinePoint]
+
+
+class Forecast(BaseModel):
+    status: Literal["available", "insufficient_data", "not_computed"]
+    weeks: int = 0
+    mentions: int = 0
+    model: str | None = None
+    share: float | None = Field(default=None, ge=0, le=1)
+    last_share: float | None = None
+    target_week: date | None = None
+    data_through: date | None = None
+    test_mae: float | None = None
+    baseline_mae: float | None = None
+    test_weeks: int = 0
+    beats_baseline: bool = False
+    experimental: bool = True
+    computed_at: datetime | None = None

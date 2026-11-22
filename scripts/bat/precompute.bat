@@ -12,5 +12,9 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo 2. Weekly mention-share forecasts...
+%PY_CMD% -m scripts.forecast --db "%DB_URL%" --write-db
+if errorlevel 1 exit /b 1
+
 echo Pipeline finished successfully.
 endlocal

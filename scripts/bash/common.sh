@@ -41,8 +41,8 @@ CONTEXT_TOKENS=${CONTEXT_TOKENS:-artifacts/embeddings/words/context.tokens.jsonl
 # Модели
 TITLES_MODEL_OUT=${TITLES_MODEL_OUT:-artifacts/embeddings/words/titles}
 CONTEXT_MODEL_OUT=${CONTEXT_MODEL_OUT:-artifacts/embeddings/words/context}
-TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/w2v_titles_300d.model}
-CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/w2v_context_300d.model}
+TITLES_MODEL=${TITLES_MODEL:-artifacts/embeddings/words/titles/w2v_titles_50d.model}
+CONTEXT_MODEL=${CONTEXT_MODEL:-artifacts/embeddings/words/context/w2v_context_50d.model}
 
 # Результаты анализа
 TECH_OUT=${TECH_OUT:-artifacts/tech_names.txt}

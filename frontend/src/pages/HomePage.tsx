@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useMeta, useTechList } from "../api/queries";
 import { BarList } from "../components/charts";
@@ -26,6 +27,7 @@ export function HomePage() {
           <SearchBox variant="hero" hotkey />
         </div>
         <DatasetLine />
+        <p><Link to="/explore">Карта и категории</Link>{" · "}<Link to="/compare">Сравнить технологии</Link></p>
       </div>
       <TopTechs />
     </>

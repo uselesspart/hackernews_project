@@ -28,7 +28,7 @@ test("поиск с опечаткой и клавиатурой", async ({ page
   await expect(page).toHaveURL(/\/tech\/javascript$/);
 });
 
-for (const path of ["/", "/tech/rust", "/tech/fossil", "/tech/nope"]) {
+for (const path of ["/", "/tech/rust", "/tech/fossil", "/tech/nope", "/explore", "/compare"]) {
   test(`axe без серьёзных нарушений: ${path}`, async ({ page }) => {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

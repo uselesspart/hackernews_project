@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/techs/{key}/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Forecast */
+        get: operations["forecast_api_techs__key__forecast_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -192,6 +209,55 @@ export interface components {
             /** Count */
             count: number;
         };
+        /** Forecast */
+        Forecast: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "insufficient_data" | "not_computed";
+            /**
+             * Weeks
+             * @default 0
+             */
+            weeks: number;
+            /**
+             * Mentions
+             * @default 0
+             */
+            mentions: number;
+            /** Model */
+            model?: string | null;
+            /** Share */
+            share?: number | null;
+            /** Last Share */
+            last_share?: number | null;
+            /** Target Week */
+            target_week?: string | null;
+            /** Data Through */
+            data_through?: string | null;
+            /** Test Mae */
+            test_mae?: number | null;
+            /** Baseline Mae */
+            baseline_mae?: number | null;
+            /**
+             * Test Weeks
+             * @default 0
+             */
+            test_weeks: number;
+            /**
+             * Beats Baseline
+             * @default false
+             */
+            beats_baseline: boolean;
+            /**
+             * Experimental
+             * @default true
+             */
+            experimental: boolean;
+            /** Computed At */
+            computed_at?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -207,6 +273,16 @@ export interface components {
             high: number | null;
             /** Pval */
             pval: number | null;
+            /**
+             * Qval
+             * @description BH-adjusted p-value across fitted technology coefficients
+             */
+            qval?: number | null;
+            /**
+             * Significant Adjusted
+             * @description BH FDR below 0.05; null if not computed
+             */
+            significant_adjusted?: boolean | null;
             /** Reliable */
             reliable: boolean;
             /**
@@ -658,6 +734,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Timeline"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forecast_api_techs__key__forecast_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Forecast"];
                 };
             };
             /** @description Validation Error */

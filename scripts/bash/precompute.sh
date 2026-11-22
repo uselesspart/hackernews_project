@@ -9,4 +9,7 @@ activate_venv
 echo "1) Предрасчёт данных для API (analytics.embeddings.scripts.precompute)..."
 python -m analytics.embeddings.scripts.precompute -d "$DB_URL" --context-model "$CONTEXT_MODEL" --titles-model "$TITLES_MODEL"
 
+echo "2) Weekly mention-share forecasts..."
+python -m scripts.forecast --db "$DB_URL" --write-db
+
 echo "Pipeline finished successfully."

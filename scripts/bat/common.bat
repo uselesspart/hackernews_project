@@ -39,8 +39,8 @@ if not defined CONTEXT_TOKENS set "CONTEXT_TOKENS=artifacts/embeddings/words/con
 :: Модели
 if not defined TITLES_MODEL_OUT set "TITLES_MODEL_OUT=artifacts/embeddings/words/titles"
 if not defined CONTEXT_MODEL_OUT set "CONTEXT_MODEL_OUT=artifacts/embeddings/words/context"
-if not defined TITLES_MODEL set "TITLES_MODEL=artifacts/embeddings/words/titles/w2v_titles_300d.model"
-if not defined CONTEXT_MODEL set "CONTEXT_MODEL=artifacts/embeddings/words/context/w2v_context_300d.model"
+if not defined TITLES_MODEL set "TITLES_MODEL=artifacts/embeddings/words/titles/w2v_titles_50d.model"
+if not defined CONTEXT_MODEL set "CONTEXT_MODEL=artifacts/embeddings/words/context/w2v_context_50d.model"
 
 :: Результаты анализа
 if not defined TECH_OUT set "TECH_OUT=artifacts/tech_names.txt"

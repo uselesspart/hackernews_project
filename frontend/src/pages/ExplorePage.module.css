@@ -1,0 +1,15 @@
+.page { display: grid; gap: var(--space-5); }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.page label { display: grid; gap: var(--space-2); max-width: 24rem; }
+.page select { min-height: 44px; padding: 0.5rem; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+.map { width: 100%; max-height: 32rem; border: 1px solid var(--border); }
+.map circle { fill: var(--data-bar); }
+.map a:hover circle, .map a:focus circle { r: 10px; stroke: var(--text); stroke-width: 2px; }
+.map text { fill: var(--text); font-size: 13px; pointer-events: none; }
+.map line { stroke: var(--border-strong); stroke-width: 1px; pointer-events: none; }
+.catalog { columns: 2 15rem; padding-left: 1.5rem; }
+.catalog li { break-inside: avoid; margin-bottom: var(--space-2); }
+.tableWrap { overflow-x: auto; }
+.tableWrap table { border-collapse: collapse; width: 100%; }
+.tableWrap th, .tableWrap td { text-align: left; padding: 0.8rem; border-bottom: 1px solid var(--border); }
+.tableWrap caption { text-align: left; padding-bottom: 1rem; }

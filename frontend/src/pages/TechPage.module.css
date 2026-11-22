@@ -1,8 +1,10 @@
 .page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .nav {
+  min-width: 0;
   position: sticky;
   top: var(--header-h);
   z-index: 10;

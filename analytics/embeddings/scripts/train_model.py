@@ -1,7 +1,6 @@
 import argparse
 import gzip
 import json
-import os
 from pathlib import Path
 from re import Pattern
 
@@ -11,6 +10,7 @@ from gensim.models import Word2Vec
 
 from analytics.embeddings.patterns import PATTERNS
 from analytics.embeddings.w2v_quality import format_report, quality_report
+from analytics.evaluation import stable_hash
 from utils.cli import cli_main
 
 
@@ -90,12 +90,13 @@ def parse_args():
     p.add_argument("-p", "--path", required=True, help="Путь к файлу JSONL.GZ с токенами")
     p.add_argument("-o", "--out-dir", default="artifacts/embeddings/words",
                    help="Директория для сохранения модели/векторов")
-    p.add_argument("--vector-size", type=int, default=300, help="Размерность эмбеддингов")
+    p.add_argument("--vector-size", type=int, default=50, help="Размерность эмбеддингов")
     p.add_argument("--window", type=int, default=5, help="Окно контекста")
     p.add_argument("--min-count", type=int, default=2, help="Минимальная частота токена")
     p.add_argument("--sg", type=int, choices=[0, 1], default=1, help="0=CBOW, 1=Skip-gram")
-    p.add_argument("--epochs", type=int, default=5, help="Число эпох обучения")
-    p.add_argument("--workers", type=int, default=os.cpu_count() or 4, help="Число потоков")
+    p.add_argument("--epochs", type=int, default=20, help="Число эпох обучения")
+    p.add_argument("--workers", type=int, default=1, help="Число потоков; 1 для воспроизводимости")
+    p.add_argument("--seed", type=int, default=42, help="Seed для воспроизводимости")
     p.add_argument("--aggregate-synonyms", action="store_true",
                    help="Агрегировать синонимы из patterns.py после обучения")
     return p.parse_args()
@@ -117,7 +118,7 @@ def main() -> int:
         min_count=args.min_count,
         workers=args.workers,
         sg=args.sg,
-        epochs=args.epochs
+        epochs=args.epochs, seed=args.seed, hashfxn=stable_hash
     )
 
     # Генерация базового имени файла

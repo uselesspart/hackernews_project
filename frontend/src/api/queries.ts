@@ -3,6 +3,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-qu
 import { getJson } from "./client";
 import type {
   DatasetMeta,
+  Forecast,
   StoriesPage,
   StorySort,
   Suggestion,
@@ -78,6 +79,14 @@ export function useTechTimeline(key: string, bucket: TimelineBucket, enabled: bo
     queryFn: ({ signal }) =>
       getJson<Timeline>(`/techs/${encodeURIComponent(key)}/timeline`, { bucket }, signal),
     enabled,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useTechForecast(key: string) {
+  return useQuery({
+    queryKey: ["forecast", key],
+    queryFn: ({ signal }) => getJson<Forecast>(`/techs/${encodeURIComponent(key)}/forecast`, {}, signal),
     staleTime: 10 * 60_000,
   });
 }

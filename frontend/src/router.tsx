@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { TechPage } from "./pages/TechPage";
+import { ComparePage } from "./pages/ComparePage";
+import { ExplorePage } from "./pages/ExplorePage";
 
 export const routes: RouteObject[] = [
   {
@@ -11,6 +13,8 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/tech/:key", element: <TechPage /> },
+      { path: "/compare", element: <ComparePage /> },
+      { path: "/explore", element: <ExplorePage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

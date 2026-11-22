@@ -28,6 +28,7 @@ export const defaultApi: Handler = (url) => {
   if (p === "/api/techs/rust") return { body: rust };
   if (p === "/api/techs/fossil") return { body: fossil };
   if (p === "/api/techs/rust/stories") return { body: storiesRust };
+  if (p.endsWith("/forecast")) return { body: { status: "not_computed", weeks: 0, mentions: 0 } };
   if (p.startsWith("/api/techs/") && !p.includes("/", "/api/techs/".length)) {
     return { status: 404, body: { detail: "Технология не отслеживается" } };
   }

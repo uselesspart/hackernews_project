@@ -1,0 +1,22 @@
+{
+  "seed": 20261123,
+  "excluded_articles": 1760,
+  "title_count": 600,
+  "sentiment_count": 101,
+  "sentiment_articles": 89,
+  "requested_per_tech": {
+    "mentions": 40,
+    "nonmentions": 20
+  },
+  "actual_per_tech": {
+    "linux": 22,
+    "gpt": 32,
+    "python": 12,
+    "rust": 14,
+    "javascript": 9,
+    "windows": 12
+  },
+  "selection": "Six technology strata; up to the requested counts if available; prose length 651..5000 characters; not representative.",
+  "annotation": "Blank export for independent review; never copy classifier predictions.",
+  "dictionary_sha256": "46e35c64dab663760ff2357e11947e099b11ba43351512157625e8cfd9e400d0"
+}

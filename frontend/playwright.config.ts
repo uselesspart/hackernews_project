@@ -3,8 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 // E2E идут против настоящего API: перед запуском поднимите его (README фронтенда, раздел «Тесты»)
 export default defineConfig({
   testDir: "e2e",
-  use: { baseURL: "http://127.0.0.1:5173" },
-  webServer: {
+  use: { baseURL: process.env.HN_DEMO_URL ?? "http://127.0.0.1:5173" },
+  webServer: process.env.HN_DEMO_URL ? undefined : {
     command: "npm run dev",
     url: "http://127.0.0.1:5173",
     reuseExistingServer: true,

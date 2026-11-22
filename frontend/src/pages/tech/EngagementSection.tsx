@@ -25,6 +25,12 @@ export function EngagementSection({ profile }: { profile: TechProfile }) {
             )}
           </p>
           <p className={styles.irrText}>{sentence}</p>
+          {irr.significant_adjusted != null && <p>
+            {irr.significant_adjusted
+              ? "Связь сохраняет статистическую значимость после поправки Бенджамини — Хохберга на множество технологий (FDR 5%)."
+              : "После поправки Бенджамини — Хохберга на множество технологий статистическая значимость не подтверждена (FDR 5%)."}
+            {" "}95 % интервал выше относится к отдельной оценке.
+          </p>}
         </div>
       ) : irr.status === "insufficient_data" || (irr.value != null && !irr.status) ? (
         <Note tone="lowdata">

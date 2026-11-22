@@ -1,3 +1,12 @@
+Локальная презентация: после `cd frontend; npm run build` вернитесь в корень и выполните
+`venv\Scripts\python.exe -m scripts.demo`. API и интерфейс работают на одном адресе
+`http://127.0.0.1:8000`; отдельный Node-сервер при показе не нужен.
+Проверка без запуска: `venv\Scripts\python.exe -m scripts.demo --check`.
+В PowerShell сборку и запуск объединяет `scripts/demo.ps1 -Build`.
+
+Актуальный статус, результаты экспериментов и оставшиеся задачи:
+[evaluation/PROGRESS-2026-11-23.md](evaluation/PROGRESS-2026-11-23.md).
+
 ## Содержание
 
 - [Установка зависимостей](#установка-зависимостей)
@@ -134,6 +143,7 @@ HTTP API на FastAPI для фронтенда (пакет api/). Отдаёт 
     GET /api/techs/{key} — страница технологии: имя, синонимы, категории, статистика (статьи, комментарии, средний score, место, доля), тональность с примерами комментариев, IRR, семантические соседи, технологии из тех же статей, частые слова, домены ссылок, точка на карте. Неизвестный ключ — 404.
     GET /api/techs/{key}/stories?sort=score|comments|time&limit=20&offset=0 — статьи о технологии со ссылками на HN.
     GET /api/techs/{key}/timeline?bucket=day|week|month — число статей по периодам на общей оси всей выборки (пустые периоды — нули) и span_days — охват выборки.
+    GET /api/techs/{key}/forecast — экспериментальная доля упоминаний на следующую полную неделю, период данных, ошибка на отложенных неделях и сравнение с последним значением. Подготовка: python -m scripts.forecast --db DB_URL --write-db.
 
 Замечания:
 
@@ -143,6 +153,9 @@ HTTP API на FastAPI для фронтенда (пакет api/). Отдаёт 
 `available`, `insufficient_data`, `not_estimable`, `model_failed`, `not_computed`.
 `reliable` требует достаточного числа статей, сходимости модели и корректного конечного интервала;
 `significant` дополнительно требует, чтобы интервал не включал 1. Это разные условия.
+`qval` — BH-поправка на множество коэффициентов технологий, `significant_adjusted` —
+результат при FDR 5%. Отдельный 95% интервал не является одновременным интервалом
+для всех технологий.
 
 Протокол AI-разметки, разделение development/holdout и команды повторной оценки описаны
 в [evaluation/README.md](evaluation/README.md). Метки не прошли человеческую проверку.
@@ -618,14 +631,14 @@ CSV также содержит story_id, title, annotation_source и annotation
 
     python3 -m analytics.embeddings.scripts.build_rel_matrix \
     -i artifacts/tech_names.txt \
-    -m artifacts/embeddings/words/context/w2v_context_300d.model \
+    -m artifacts/embeddings/words/context/w2v_context_50d.model \
     -o artifacts/similarity_matrix.csv
 
 Матрица по группам технологий
 
     python3 -m analytics.embeddings.scripts.build_rel_matrix \
     -i artifacts/tech_names.txt \
-    -m artifacts/embeddings/words/context/w2v_context_300d.model \
+    -m artifacts/embeddings/words/context/w2v_context_50d.model \
     -o artifacts/groups_matrix.csv --groups
 
 Вывод:
@@ -745,12 +758,13 @@ CSV также содержит story_id, title, annotation_source и annotation
 
     -p, --path PATH — путь к входному файлу JSONL.GZ с токенами [обязательный].
     -o, --out-dir DIR — директория для сохранения модели/векторов; по умолчанию artifacts/embeddings/words.
-    --vector-size INT — размерность эмбеддингов; по умолчанию 300.
+    --vector-size INT — размерность эмбеддингов; по умолчанию 50.
     --window INT — размер окна контекста; по умолчанию 5.
     --min-count INT — минимальная частота токена; по умолчанию 2.
     --sg {0,1} — архитектура: 0=CBOW, 1=Skip-gram; по умолчанию 1.
-    --epochs INT — число эпох обучения; по умолчанию 5.
-    --workers INT — число потоков; по умолчанию os.cpu_count().
+    --epochs INT — число эпох обучения; по умолчанию 20.
+    --workers INT — число потоков; по умолчанию 1 для воспроизводимости.
+    --seed INT — seed инициализации; по умолчанию 42.
     --aggregate-synonyms — агрегировать синонимы из patterns.py после обучения.
 
 Примеры:
@@ -760,7 +774,7 @@ CSV также содержит story_id, title, annotation_source и annotation
     python3 -m analytics.embeddings.scripts.train_model \
     -p artifacts/embeddings/words/titles.tokens.jsonl.gz \
     -o artifacts/embeddings/words/titles \
-    --vector-size 300 --window 5 --min-count 2 --epochs 5
+    --vector-size 50 --window 5 --min-count 2 --epochs 20 --workers 1 --seed 42
 
 Вывод:
 
@@ -780,7 +794,7 @@ CSV также содержит story_id, title, annotation_source и annotation
 Подсказка:
 
 После обучения используйте model.wv.most_similar("token", topn=10) для поиска ближайших слов, и model.wv.similar_by_vector(vec) — для ближайших к произвольному вектору.
-Параметры подбирайте скриптом [tune_model](#analyticsembeddingsscriptstune_model): на малом корпусе (20 тыс. элементов) значения по умолчанию (300d, 5 эпох) дают вырожденную модель, а 50–100d и 30 эпох — различающую технологии.
+Параметры подбирайте скриптом [tune_model](#analyticsembeddingsscriptstune_model): на малом корпусе прежние настройки (300d, 5 эпох) давали вырожденную модель. Текущие настройки — 50d, 20 эпох; качество на новом корпусе следует проверять отдельно.
 
 #### analytics.embeddings.scripts.tune_model
 
@@ -845,7 +859,7 @@ CSV также содержит story_id, title, annotation_source и annotation
 
     python3 -m analytics.embeddings.scripts.calculate_irr \
     -i artifacts/meta.csv \
-    -m artifacts/embeddings/words/titles/w2v_titles_300d.model \
+    -m artifacts/embeddings/words/titles/w2v_titles_50d.model \
     -o artifacts/coefs.csv
 
 Вывод:
@@ -895,8 +909,8 @@ CSV также содержит story_id, title, annotation_source и annotation
 
     python3 -m analytics.embeddings.scripts.calculate_sentiment \
     --dir artifacts/tech/ \
-    --titles-kv artifacts/embeddings/words/titles/w2v_titles_300d.model \
-    --comments-kv artifacts/embeddings/words/context/w2v_context_300d.model \
+    --titles-kv artifacts/embeddings/words/titles/w2v_titles_50d.model \
+    --comments-kv artifacts/embeddings/words/context/w2v_context_50d.model \
     --out-csv artifacts/corpus3.csv --mode bootstrap
 
 Вывод:
@@ -938,7 +952,7 @@ CSV также содержит story_id, title, annotation_source и annotation
 Пример:
 
     python3 -m analytics.embeddings.scripts.evaluate_sentiment -i artifacts/sentiment_labeled.csv \
-    --comments-model artifacts/embeddings/words/context/w2v_context_300d.model
+    --comments-model artifacts/embeddings/words/context/w2v_context_50d.model
 
 Вывод:
 
@@ -985,8 +999,8 @@ gold_techs — JSON-массив канонических ключей, [] оз�
 
     python3 -m analytics.embeddings.scripts.precompute \
     -d sqlite:///hn.db \
-    --context-model artifacts/embeddings/words/context/w2v_context_300d.model \
-    --titles-model artifacts/embeddings/words/titles/w2v_titles_300d.model
+    --context-model artifacts/embeddings/words/context/w2v_context_50d.model \
+    --titles-model artifacts/embeddings/words/titles/w2v_titles_50d.model
 
 Вывод:
 

@@ -12,7 +12,7 @@ _ADDED_COLUMNS = {
     "comment": [("dead", Boolean()), ("deleted", Boolean())],
     "tech_metrics": [("aspect_n", Integer()), ("aspect_index", Float()), ("aspect_pos_share", Float()),
                      ("aspect_neu_share", Float()), ("aspect_neg_share", Float()),
-                     ("irr_status", String(32)), ("irr_stories", Integer())],
+                     ("irr_status", String(32)), ("irr_stories", Integer()), ("irr_qval", Float())],
     "sentiment_example": [("mentions", Boolean())],
 }
 

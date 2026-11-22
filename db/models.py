@@ -105,6 +105,7 @@ class TechMetrics(Base):
     irr_low: Mapped[float | None] = mapped_column(Float)
     irr_high: Mapped[float | None] = mapped_column(Float)
     irr_pval: Mapped[float | None] = mapped_column(Float)
+    irr_qval: Mapped[float | None] = mapped_column(Float)
     irr_status: Mapped[str | None] = mapped_column(String(32))
     irr_stories: Mapped[int | None] = mapped_column(Integer)
 
@@ -121,6 +122,15 @@ class TechNeighbor(Base):
     tech_id: Mapped[int] = mapped_column(ForeignKey("tech.id"), primary_key=True)
     neighbor_id: Mapped[int] = mapped_column(ForeignKey("tech.id"), primary_key=True)
     similarity: Mapped[float] = mapped_column(Float)
+
+
+class TechForecast(Base):
+    """Experimental one-week forecasts and their chronological evaluation metadata."""
+    __tablename__ = "tech_forecast"
+
+    tech_id: Mapped[int] = mapped_column(ForeignKey("tech.id"), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON)
+    computed_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class TechWord(Base):

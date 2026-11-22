@@ -101,6 +101,7 @@ def test_profile(client):
                            "pos_share": None, "neu_share": None, "neg_share": None}
     assert all(e["mentions"] is False for e in s["positive"] + s["negative"])
     assert p["irr"] == {"value": None, "low": None, "high": None, "pval": None,
+                        "qval": None, "significant_adjusted": None,
                         "reliable": False, "significant": False, "status": "insufficient_data", "n": 1}
 
 

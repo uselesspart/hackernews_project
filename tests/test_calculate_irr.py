@@ -129,10 +129,13 @@ def _run(run_cli, tmp_path, df, name, *extra):
 
 def test_main_output_format(run_cli, tmp_path, w2v_path):
     coefs = _run(run_cli, tmp_path, _meta(600), "basic")
-    assert list(coefs.columns) == ["coef", "se", "pval", "conf_low", "conf_high", "IRR", "IRR_low", "IRR_high"]
+    assert list(coefs.columns) == ["coef", "se", "pval", "conf_low", "conf_high", "IRR", "IRR_low", "IRR_high",
+                                   "qval_bh"]
     # sim_* и парные признаки на 6 типах заголовков частично линейно зависимы и могут быть исключены
     assert {"const", "has_python", "has_rust", "has_cpp"} <= set(coefs.index)
-    assert np.isfinite(coefs.to_numpy()).all()
+    assert np.isfinite(coefs.drop(columns='qval_bh').to_numpy()).all()
+    assert coefs.loc[['has_python', 'has_rust', 'has_cpp'], 'qval_bh'].between(0, 1).all()
+    assert coefs.loc['const', 'qval_bh'] != coefs.loc['const', 'qval_bh']  # outside the tested family
     np.testing.assert_allclose(coefs["IRR"], np.exp(coefs["coef"]))
     assert (coefs["IRR_low"] <= coefs["IRR"]).all() and (coefs["IRR"] <= coefs["IRR_high"]).all()
 

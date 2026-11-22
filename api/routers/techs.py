@@ -74,8 +74,12 @@ def _irr_brief(m: TechMetrics | None, stories: int, settings: Settings) -> IrrBr
     elif status == "available" and not valid:
         status = "not_estimable"
     reliable = status == "available" and valid
+    qval = m.irr_qval if m and m.irr_qval is not None and isfinite(m.irr_qval) else None
+    if qval is not None and not 0 <= qval <= 1:
+        qval = None
     return IrrBrief(value=value, low=low, high=high, pval=pval, n=n, status=status,
-                    reliable=reliable, significant=reliable and (low > 1 or high < 1))
+                    reliable=reliable, significant=reliable and (low > 1 or high < 1), qval=qval,
+                    significant_adjusted=reliable and qval < .05 if qval is not None else None)
 
 
 def _resolve(session: Session, key: str):

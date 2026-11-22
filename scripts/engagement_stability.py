@@ -26,13 +26,14 @@ def run_stability(df, min_freq=30):
                 ('late', df[df.time >= midpoint], 'negbin', True, min_freq),
                 ('min60', df, 'negbin', True, 60), ('min100', df, 'negbin', True, 100),
                 ('no_controls', df, 'negbin', False, min_freq),
+                ('calendar', df, 'negbin', True, min_freq),
                 ('poisson_robust', df, 'poisson', True, min_freq)]
     rows, diagnostics = [], {}
     for name, data, family, controls, cutoff in variants:
         print(f'Fitting {name}: {len(data)} stories', flush=True)
         try:
             table = compute_irr(data, family=family, controls=controls, top_n=None,
-                                min_freq=cutoff, interactions=False)
+                                min_freq=cutoff, interactions=False, calendar=name == 'calendar')
             diag = table.attrs['diagnostics']
             diagnostics[name] = diag | dict(period_start=str(data.time.min()), period_end=str(data.time.max()))
             if not diag['converged']:
@@ -47,7 +48,7 @@ def run_stability(df, min_freq=30):
                 if not 0 < r.IRR_low <= r.IRR <= r.IRR_high or not 0 <= r.pval <= 1:
                     continue
                 rows.append(dict(variant=name, tech=key, irr=r.IRR, low=r.IRR_low, high=r.IRR_high,
-                                 pval=r.pval, n=diag['tech_frequencies'][key]))
+                                 pval=r.pval, qval_bh=r.qval_bh, n=diag['tech_frequencies'][key]))
         except (ValueError, np.linalg.LinAlgError) as exc:
             diagnostics[name] = dict(error=str(exc))
     return pd.DataFrame(rows), diagnostics
@@ -76,7 +77,7 @@ def forest_plot(results, destination, limit=15, periods=None):
     fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(.5, .94), ncol=3, fontsize=8)
     ax.grid(axis='x', alpha=.2)
     fig.text(.02, .015, 'Observational associations; intervals conditional on dispersion. '
-             'No multiple-testing correction.',
+             'BH-adjusted p-values are provided in the companion CSV; intervals are not simultaneous.',
              fontsize=8)
     fig.tight_layout(rect=(0, .04, 1, .88))
     for suffix in ('png', 'svg'):

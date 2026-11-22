@@ -8,6 +8,7 @@ import { ErrorState, Skeleton } from "../components/ui";
 import { useDelayedFlag, useDocumentTitle } from "../lib/hooks";
 import { DomainsSection, WordsSection } from "./tech/DiscussionSections";
 import { EngagementSection } from "./tech/EngagementSection";
+import { ForecastSection } from "./tech/ForecastSection";
 import { MethodNote } from "./tech/MethodNote";
 import { NoStories } from "./tech/NoStories";
 import { RelatedSection } from "./tech/RelatedSection";
@@ -52,6 +53,7 @@ function TechView({ profile, meta }: { profile: TechProfile; meta: DatasetMeta |
             <DomainsSection domains={profile.domains} />
           </div>
           <TimelineSection techKey={profile.key} meta={meta} />
+          <ForecastSection techKey={profile.key} />
           <RelatedSection profile={profile} />
           <MethodNote meta={meta} />
         </>
@@ -67,6 +69,7 @@ function PageNav({ profile }: { profile: TechProfile }) {
     ["sentiment", "Тон комментариев"],
     ["stories", "Статьи"],
     ["engagement", "Вовлечённость"],
+    ["forecast", "Прогноз интереса"],
     ...(profile.words.length ? [["words", "О чём говорят"]] : []),
     ...(profile.cooccurring.length || profile.neighbors.length ? [["related", "Рядом"]] : []),
   ] as const;

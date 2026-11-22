@@ -167,7 +167,8 @@ def irr_by_tech(session: Session, w2v: Word2Vec | None = None, family: str = "ne
             continue
         value, low, high, pval = map(_finite, (row.IRR, row.IRR_low, row.IRR_high, row.pval))
         if (None not in (value, low, high, pval) and 0 < low <= value <= high and 0 <= pval <= 1):
-            output[key].update(irr=value, irr_low=low, irr_high=high, irr_pval=pval, irr_status="available")
+            output[key].update(irr=value, irr_low=low, irr_high=high, irr_pval=pval,
+                               irr_qval=_finite(row.qval_bh), irr_status="available")
     return output
 
 

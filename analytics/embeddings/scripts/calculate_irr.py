@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from gensim.models import Word2Vec
+from statsmodels.stats.multitest import multipletests
 
 from analytics.embeddings.patterns import COMPILED_PATTERNS
 from utils.cli import cli_main
@@ -183,7 +184,7 @@ def fit_count_model(X: pd.DataFrame, y: np.ndarray, family: str, max_vif: float 
 
 def load_titles(path: str, max_rows: int, sample: int | None) -> pd.DataFrame:
     # url есть в выгрузках export_stories_meta новых версий; без неё контроль has_url не строится
-    df = pd.read_csv(path, usecols=lambda c: c in {'title', 'descendants', 'url'})
+    df = pd.read_csv(path, usecols=lambda c: c in {'title', 'descendants', 'url', 'time'})
     print(f"Загружено строк: {len(df)}")
     df = df[df['descendants'] >= 0]
     print(f"С известным числом комментариев: {len(df)}")
@@ -237,6 +238,31 @@ def control_features(df: pd.DataFrame) -> dict[str, pd.Series]:
     if 'url' in df:
         features['has_url'] = (df['url'].fillna("").astype(str).str.len() > 0).astype(np.int8)
     return features
+
+
+def calendar_features(df: pd.DataFrame) -> dict[str, pd.Series]:
+    if 'time' not in df:
+        raise ValueError('Calendar controls require publication time')
+    times = pd.to_datetime(df['time'], utc=True, errors='coerce')
+    if times.isna().any():
+        raise ValueError('Calendar controls require valid publication times for every story')
+    features = {}
+    for prefix, values in (('month', times.dt.strftime('%Y-%m')), ('weekday', times.dt.weekday)):
+        dummies = pd.get_dummies(values, prefix=prefix, drop_first=True, dtype=float)
+        features.update({name: dummies[name] for name in dummies})
+    angle = 2 * np.pi * times.dt.hour / 24
+    features.update(hour_sin=np.sin(angle), hour_cos=np.cos(angle))
+    return features
+
+
+def adjust_technology_pvalues(table, techs=None):
+    """BH family is the fitted technology coefficients, excluding controls and interactions."""
+    table['qval_bh'] = np.nan
+    family = {f'has_{key}' for key in (COMPILED_PATTERNS if techs is None else techs)}
+    mask = table.feature.isin(family) & np.isfinite(table.pval)
+    if mask.any():
+        table.loc[mask, 'qval_bh'] = multipletests(table.loc[mask, 'pval'], method='fdr_bh')[1]
+    return table
 
 
 def build_features(tech_lists: pd.Series, top_tech, top_pairs, vec_map,
@@ -307,12 +333,13 @@ def parse_args():
                    help="Без пар технологий: начальная модель главных эффектов")
     p.add_argument("--diagnostics-json", help="Сохранить объём, дисперсию, alpha, сходимость и признаки в JSON")
     p.add_argument("--min-frequency", type=int, default=MIN_FREQ, help="Минимум статей на технологию")
+    p.add_argument("--calendar-controls", action="store_true", help="Month, weekday and UTC hour controls")
     return p.parse_args()
 
 
 def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "negbin", groups: bool = False,
                 top_n: int | None = TOP_N, controls: bool = True, max_vif: float | None = MAX_VIF,
-                interactions: bool = True, min_freq: int = MIN_FREQ) -> pd.DataFrame:
+                interactions: bool = True, min_freq: int = MIN_FREQ, calendar: bool = False) -> pd.DataFrame:
     """
     Таблица IRR по DataFrame с колонками title, descendants и (необязательно) url; индекс — позиционный.
     Базовая категория — статьи без технологий из топа, поэтому на вход нужны все статьи,
@@ -337,7 +364,10 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "ne
     if not groups:
         vec_map = token_vec_map(w2v, freq.index) if w2v is not None else {}
 
-    X = build_features(tech_lists, top_tech, top_pairs, vec_map, control_features(df) if controls else None)
+    extra_controls = control_features(df) if controls else {}
+    if calendar:
+        extra_controls.update(calendar_features(df))
+    X = build_features(tech_lists, top_tech, top_pairs, vec_map, extra_controls)
     y = df['descendants'].to_numpy(dtype=np.float64)
 
     # Постоянный признак (например, sim_* когда нет заголовков с 2+ технологиями)
@@ -359,13 +389,14 @@ def compute_irr(df: pd.DataFrame, w2v: Word2Vec | None = None, family: str = "ne
     result, alpha = fit_count_model(X, y, family, max_vif=max_vif)
     if alpha is not None:
         print(f"Оценка сверхдисперсии NB: alpha={alpha:.4f}")
-    table = irr_table(result)
+    table = adjust_technology_pvalues(irr_table(result), top_tech)
     table.attrs['diagnostics'] = {
         'family': family, 'n_stories': len(df), 'stories_without_detected_techs': int(tech_lists.map(len).eq(0).sum()),
         'mean_comments': float(y.mean()), 'variance_comments': float(y.var()), 'alpha': alpha,
         'converged': bool(result.converged), 'deviance': float(result.deviance),
         'features': list(result.params.index), 'tech_frequencies': {str(t): int(n) for t, n in freq.items()},
         'controls': controls, 'interactions': interactions, 'embeddings': w2v is not None, 'min_frequency': min_freq,
+        'calendar_controls': calendar, 'multiple_testing': 'BH FDR across fitted technology coefficients',
         'interpretation': 'Adjusted observational associations, not causal effects; 95% Wald intervals are conditional '
                           'on the estimated dispersion and feature selection.'}
     return table
@@ -378,7 +409,8 @@ def main() -> int:
     model = Word2Vec.load(args.model) if args.model else None
     coef_df = compute_irr(df, model, args.family, args.groups, top_n=args.top_n or None,
                           controls=not args.no_controls, max_vif=args.max_vif or None,
-                          interactions=not args.no_interactions, min_freq=args.min_frequency)
+                          interactions=not args.no_interactions, min_freq=args.min_frequency,
+                          calendar=args.calendar_controls)
     coef_df.to_csv(args.output, index=False, encoding='utf-8', float_format='%.8f')
     if args.diagnostics_json:
         with open(args.diagnostics_json, 'w', encoding='utf-8') as f:
